@@ -31,7 +31,7 @@
 #include <exception>
 #include <mutex>
 
-#include "gioppler/sink.hpp"
+#include "giopler/sink.hpp"
 
 // -----------------------------------------------------------------------------
 namespace gioppler

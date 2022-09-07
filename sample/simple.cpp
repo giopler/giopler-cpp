@@ -23,7 +23,7 @@
 #error C++20 or newer support required to use this library.
 #endif
 
-#include "gioppler/gioppler.hpp"
+#include "giopler/giopler.hpp"
 
 // -----------------------------------------------------------------------------
 uint64_t factorial(uint64_t n) {

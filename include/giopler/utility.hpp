@@ -45,8 +45,8 @@
 #include <variant>
 using namespace std::literals;
 
-#include "gioppler/config.hpp"
-#include "gioppler/platform.hpp"
+#include "giopler/config.hpp"
+#include "giopler/platform.hpp"
 
 // -----------------------------------------------------------------------------
 /// String formatting function

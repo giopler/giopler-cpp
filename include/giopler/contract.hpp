@@ -34,8 +34,8 @@
 #include <source_location>
 #include <stdexcept>
 
-#include "gioppler/utility.hpp"
-#include "gioppler/sink.hpp"
+#include "giopler/utility.hpp"
+#include "giopler/sink.hpp"
 
 // -----------------------------------------------------------------------------
 /// Contracts to ensure correct program behavior.

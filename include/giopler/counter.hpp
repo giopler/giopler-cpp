@@ -34,9 +34,9 @@
 #include <utility>
 #include <vector>
 
-#include <gioppler/record.hpp>
-#include <gioppler/sink.hpp>
-#include <gioppler/histogram.hpp>
+#include <giopler/record.hpp>
+#include <giopler/sink.hpp>
+#include <giopler/histogram.hpp>
 
 // -----------------------------------------------------------------------------
 namespace gioppler::prof {

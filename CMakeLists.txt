@@ -29,55 +29,67 @@ set(CMAKE_CXX_STANDARD 20)            # set C++20 as the default
 set(CMAKE_CXX_STANDARD_REQUIRED ON)   # require C++20
 set(CMAKE_CXX_EXTENSIONS OFF)         # turn off GNU compiler extensions
 
-project(Gioppler
+project(Giopler
   VERSION 0.1.1
   DESCRIPTION "A profiling, logging, and testing library for C++20"
   HOMEPAGE_URL "https://github.com/gioppler/gioppler"
   LANGUAGES CXX)
 
 include(CTest)
+set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules;${CMAKE_MODULE_PATH}")
+
+# ------------------------------------------------------------------------------
+find_package(Brotli QUIET)
+if(BROTLI_FOUND)
+  include_directories(${BROTLI_INCLUDE_DIRS})
+  list(APPEND GIOPLER_LIBS ${BROTLI_LIBRARIES})
+  add_compile_definitions(PRIVATE GIOPLER_HAVE_BROTLI=1)
+else()
+  message(WARNING "Brotli library not found. Although not required, it is very helpful when communicating with the Giopler server.")
+endif()
 
 # ------------------------------------------------------------------------------
 # http://mariobadr.com/creating-a-header-only-library-with-cmake.html
 # https://dominikberner.ch/cmake-interface-lib/
 # https://www.cppengineer.com/blog/using-cmake-to-create-header-only-shared-and-static-libraries
-add_library(gioppler INTERFACE)
-target_include_directories(gioppler INTERFACE "$<BUILD_INTERFACE:${Gioppler_SOURCE_DIR}/include>")
+add_library(giopler INTERFACE)
+target_include_directories(giopler INTERFACE "$<BUILD_INTERFACE:${Giopler_SOURCE_DIR}/include>")
+list(APPEND GIOPLER_LIBS giopler)
 
 # Usage:
-# target_link_libraries(your_app_or_lib PRIVATE gioppler)
+# target_link_libraries(your_app_or_lib PRIVATE ${GIOPLER_LIBS})
 
 # ------------------------------------------------------------------------------
-file(GLOB TEST_SOURCE_LIST CONFIGURE_DEPENDS "${Gioppler_SOURCE_DIR}/test/*.cpp")
-add_executable(gioppler_test "${TEST_SOURCE_LIST}")
-#target_include_directories(gioppler_test PUBLIC $<BUILD_INTERFACE:${Gioppler_SOURCE_DIR}/test>)
-target_compile_options(gioppler_test PRIVATE -Werror -Wall)
-target_link_libraries(gioppler_test PRIVATE m)
-target_link_libraries(gioppler_test PRIVATE gioppler)
+file(GLOB TEST_SOURCE_LIST CONFIGURE_DEPENDS "${Giopler_SOURCE_DIR}/test/*.cpp")
+add_executable(giopler_test "${TEST_SOURCE_LIST}")
+#target_include_directories(giopler_test PUBLIC $<BUILD_INTERFACE:${Giopler_SOURCE_DIR}/test>)
+target_compile_options(giopler_test PRIVATE -Werror -Wall)
+target_link_libraries(giopler_test PRIVATE ${GIOPLER_LIBS})
+target_link_libraries(giopler_test PRIVATE m)
 
 # ------------------------------------------------------------------------------
-file(GLOB SIMPLE_SOURCE_LIST CONFIGURE_DEPENDS "${Gioppler_SOURCE_DIR}/sample/simple.cpp")
+file(GLOB SIMPLE_SOURCE_LIST CONFIGURE_DEPENDS "${Giopler_SOURCE_DIR}/sample/simple.cpp")
 add_executable(simple "${SIMPLE_SOURCE_LIST}")
-#target_include_directories(simple PUBLIC $<BUILD_INTERFACE:${Gioppler_SOURCE_DIR}/sample>)
+#target_include_directories(simple PUBLIC $<BUILD_INTERFACE:${Giopler_SOURCE_DIR}/sample>)
 target_compile_options(simple PRIVATE -Werror -Wall)
+target_link_libraries(simple PRIVATE ${GIOPLER_LIBS})
 target_link_libraries(simple PRIVATE m)
-target_link_libraries(simple PRIVATE gioppler)
 
 # ------------------------------------------------------------------------------
-file(GLOB MAT_MULT_SOURCE_LIST CONFIGURE_DEPENDS "${Gioppler_SOURCE_DIR}/sample/matrix_mult.cpp")
+file(GLOB MAT_MULT_SOURCE_LIST CONFIGURE_DEPENDS "${Giopler_SOURCE_DIR}/sample/matrix_mult.cpp")
 add_executable(matrix_mult "${MAT_MULT_SOURCE_LIST}")
-#target_include_directories(matrix_mult PUBLIC $<BUILD_INTERFACE:${Gioppler_SOURCE_DIR}/sample>)
+#target_include_directories(matrix_mult PUBLIC $<BUILD_INTERFACE:${Giopler_SOURCE_DIR}/sample>)
 target_compile_options(matrix_mult PRIVATE -Werror -Wall)
+target_link_libraries(matrix_mult PRIVATE ${GIOPLER_LIBS})
 target_link_libraries(matrix_mult PRIVATE m)
-target_link_libraries(matrix_mult PRIVATE gioppler)
 
 # ------------------------------------------------------------------------------
-file(GLOB THREADS_SOURCE_LIST CONFIGURE_DEPENDS "${Gioppler_SOURCE_DIR}/sample/threads.cpp")
+file(GLOB THREADS_SOURCE_LIST CONFIGURE_DEPENDS "${Giopler_SOURCE_DIR}/sample/threads.cpp")
 add_executable(threads "${THREADS_SOURCE_LIST}")
-#target_include_directories(threads PUBLIC $<BUILD_INTERFACE:${Gioppler_SOURCE_DIR}/sample>)
+#target_include_directories(threads PUBLIC $<BUILD_INTERFACE:${Giopler_SOURCE_DIR}/sample>)
 target_compile_options(threads PRIVATE -Werror -Wall)
+target_link_libraries(threads PRIVATE ${GIOPLER_LIBS})
 target_link_libraries(threads PRIVATE m)
-target_link_libraries(threads PRIVATE gioppler)
 
 # ------------------------------------------------------------------------------
 add_compile_definitions(PRIVATE GIOPPLER_BUILD_MODE_DEV=1)

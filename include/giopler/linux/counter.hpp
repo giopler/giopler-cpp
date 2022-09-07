@@ -30,7 +30,7 @@
 
 #include <set>
 
-#include "gioppler/config.hpp"
+#include "giopler/config.hpp"
 
 // -----------------------------------------------------------------------------
 /// Performance Monitoring Counters (pmc), a Linux feature.

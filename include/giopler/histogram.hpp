@@ -34,7 +34,7 @@
 #include <string>
 #include <vector>
 
-#include "gioppler/contract.hpp"
+#include "giopler/contract.hpp"
 
 // -----------------------------------------------------------------------------
 namespace gioppler::histogram

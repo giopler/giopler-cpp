@@ -30,8 +30,8 @@
 #include <source_location>
 #include <string_view>
 
-#include "gioppler/config.hpp"
-#include "gioppler/utility.hpp"
+#include "giopler/config.hpp"
+#include "giopler/utility.hpp"
 
 // -----------------------------------------------------------------------------
 namespace gioppler::dev

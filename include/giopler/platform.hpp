@@ -20,27 +20,42 @@
 // SOFTWARE.
 
 #pragma once
-#ifndef GIOPPLER_GIOPPLER_HPP
-#define GIOPPLER_GIOPPLER_HPP
+#ifndef GIOPPLER_PLATFORM_HPP
+#define GIOPPLER_PLATFORM_HPP
 
 #if __cplusplus < 202002L
 #error Support for C++20 or newer is required to use this library.
 #endif
 
-// -----------------------------------------------------------------------------
-#include "gioppler/config.hpp"
-#include "gioppler/platform.hpp"
-#include "gioppler/utility.hpp"
-#include "gioppler/record.hpp"
-#include "gioppler/sink.hpp"
+#include <string>
+#include <cstdint>
 
-#include "gioppler/contract.hpp"
-#include "gioppler/trace.hpp"
-#include "gioppler/log.hpp"
-
-#include "gioppler/histogram.hpp"
-#include "gioppler/counter.hpp"
-#include "gioppler/exit.hpp"
+#include "giopler/config.hpp"
 
 // -----------------------------------------------------------------------------
-#endif // defined GIOPPLER_GIOPPLER_HPP
+namespace gioppler {
+// these values are assumed to be constant for the duration of the program execution
+extern uint64_t get_memory_page_size();
+extern uint64_t get_physical_memory();
+extern uint64_t get_total_cpu_cores();
+extern uint64_t get_available_cpu_cores();
+extern std::string get_program_name();
+extern uint64_t get_process_id();
+extern std::string get_real_username();
+extern std::string get_effective_username();
+extern std::string get_architecture();
+
+// these values could change as the program runs
+extern uint64_t get_thread_id();
+extern uint64_t get_node_id();
+extern uint64_t get_cpu_id();
+extern uint64_t get_available_memory();
+}   // namespace gioppler
+
+// -----------------------------------------------------------------------------
+#if defined(GIOPPLER_PLATFORM_LINUX)
+#include "giopler/linux/platform.hpp"
+#endif
+
+// -----------------------------------------------------------------------------
+#endif // defined GIOPPLER_PLATFORM_HPP

@@ -45,9 +45,9 @@
 #include <vector>
 using namespace std::chrono_literals;
 
-#include "gioppler/config.hpp"
-#include "gioppler/utility.hpp"
-#include "gioppler/record.hpp"
+#include "giopler/config.hpp"
+#include "giopler/utility.hpp"
+#include "giopler/record.hpp"
 
 // -----------------------------------------------------------------------------
 namespace gioppler::sink {
@@ -322,7 +322,7 @@ class Csv : public Sink {
 
 // -----------------------------------------------------------------------------
 #if defined(GIOPPLER_PLATFORM_LINUX)
-#include "gioppler/linux/rest_sink.hpp"
+#include "giopler/linux/rest_sink.hpp"
 #endif
 
 // -----------------------------------------------------------------------------
