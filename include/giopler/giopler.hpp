@@ -39,7 +39,9 @@
 #include "giopler/log.hpp"
 
 #include "giopler/counter.hpp"
-#include "giopler/profile.hpp"
+#include "giopler/program.hpp"
+#include "giopler/thread.hpp"
+#include "giopler/function.hpp"
 #include "giopler/exit.hpp"
 
 // -----------------------------------------------------------------------------

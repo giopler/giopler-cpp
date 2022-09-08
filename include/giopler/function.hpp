@@ -95,19 +95,39 @@ class Function {
   Function([[maybe_unused]] const double workload = 0,
            [[maybe_unused]] gioppler::source_location source_location = gioppler::source_location::current())
   {
+    if constexpr (g_build_mode == BuildMode::Dev || g_build_mode == BuildMode::Prof) {
+      _source_location          = std::make_unique<gioppler::source_location>(source_location);
+      _old_parent_function_name = g_parent_function_name;
+      _old_function_name        = g_function_name;
+      g_parent_function_name    = g_function_name;
+      g_function_name           = source_location.function_name();
+
+      _parent_function_object   = _function_object;
+      _function_object          = this;
+    }
+
     if constexpr (g_build_mode == BuildMode::Dev) {
       std::shared_ptr<Record> record = std::make_shared<Record>(
-          create_event_record(source_location, "trace"sv, "function"sv));
+          create_event_record(source_location, "trace"sv, "function_entry"sv));
       sink::g_sink_manager.write_record(record);
     } else if constexpr (g_build_mode == BuildMode::Prof) {
-      _source_location         = std::make_unique<gioppler::source_location>(source_location);
       _event_counters_start    = std::make_unique<Record>(read_event_counters());
       _event_counters_children = std::make_unique<Record>();
     }
   }
 
   ~Function() {
-    if constexpr (g_build_mode == BuildMode::Prof) {
+    if constexpr (g_build_mode == BuildMode::Dev || g_build_mode == BuildMode::Prof) {
+      g_parent_function_name    = _old_parent_function_name;
+      g_function_name           = _old_function_name;
+      _function_object          = _parent_function_object;
+    }
+
+    if constexpr (g_build_mode == BuildMode::Dev) {
+      std::shared_ptr<Record> record = std::make_shared<Record>(
+          create_event_record(*_source_location, "trace"sv, "function_exit"sv));
+      sink::g_sink_manager.write_record(record);
+    } else if constexpr (g_build_mode == BuildMode::Prof) {
       Record event_counters_end{read_event_counters()};
 
       std::shared_ptr<Record> record_total = std::make_shared<Record>(
@@ -116,6 +136,9 @@ class Function {
       (*record_self)["evt.event"s] = "function_self"s;
 
       subtract_number_record(event_counters_end, *_event_counters_start);
+      if (_parent_function_object) {
+        _parent_function_object->track_child(event_counters_end);
+      }
       record_total->merge(event_counters_end);
       sink::g_sink_manager.write_record(record_total);
 
@@ -130,141 +153,20 @@ class Function {
   }
 
  private:
-  std::unique_ptr<gioppler::source_location> _source_location;
   // use shared pointers to minimize their cost if build mode disables the class
+  std::unique_ptr<gioppler::source_location> _source_location;
+  std::string _old_parent_function_name;
+  std::string _old_function_name;
+
+  Function* _parent_function_object;
+  static thread_local Function* _function_object;
+
   std::unique_ptr<Record> _event_counters_start;
   std::unique_ptr<Record> _event_counters_children;
 };
 
-
 // -----------------------------------------------------------------------------
-class ProfileData {
- public:
-  explicit ProfileData(const std::string_view parent_function_signature,
-                       const std::string_view function_signature)
-      :
-      _parent_function_signature(parent_function_signature),
-      _function_signature(function_signature),
-      _function_calls(),
-      _sum_of_count(),
-      _linux_event_data_total(),
-      _linux_event_data_self() {
-  }
-
-  static void write_header(std::ostream &os) {
-    os << "Subsystem,ParentFunction,Function,Calls,Count,";
-    LinuxEventsData::write_header(os);
-  }
-
-  void write_data(std::ostream &os) {
-
-  }
-
-  ProfileData &operator+=(const ProfileData &rhs) {
-    _sum_of_count += rhs._sum_of_count;
-    _linux_event_data_total += rhs._linux_event_data_total;
-    _linux_event_data_self += rhs._linux_event_data_self;
-    return *this;
-  }
-
-  friend ProfileData operator+(ProfileData lhs, const ProfileData &rhs) {
-    lhs += rhs;
-    return lhs;
-  }
-
-  ProfileData &operator-=(const ProfileData &rhs) {
-    _sum_of_count -= rhs._sum_of_count;
-    _linux_event_data_total -= rhs._linux_event_data_total;
-    _linux_event_data_self -= rhs._linux_event_data_self;
-    return *this;
-  }
-
-  friend ProfileData operator-(ProfileData lhs, const ProfileData &rhs) {
-    lhs -= rhs;
-    return lhs;
-  }
-
- private:
-  const std::string_view _parent_function_signature;
-  const std::string_view _function_signature;
-  uint64_t _function_calls;
-  double _sum_of_count;
-  LinuxEventsData _linux_event_data_total;
-  LinuxEventsData _linux_event_data_self;
-};
-
-// -----------------------------------------------------------------------------
-template<BuildMode build_mode = g_build_mode>
-class Function {
- public:
-  Function([[maybe_unused]] const std::string_view subsystem = "",
-           [[maybe_unused]] const double count = 0.0,
-           [[maybe_unused]] std::string session = "",
-           [[maybe_unused]] const source_location &location =
-           source_location::current())
-  requires (build_mode == BuildMode::off) {
-  }
-
-  Function(const std::string_view subsystem = "",
-           const double count = 0.0,
-           std::string session = "",
-           const source_location &location = source_location::current())
-  requires (build_mode == BuildMode::profile) {
-    check_create_program_thread();
-  }
-
-  ~Function() {
-    check_destroy_program_thread();
-  }
-
- private:
-  using ProfileKey = std::pair<std::string_view, std::string_view>;
-  static std::unordered_map<ProfileKey, ProfileData> _profile_map;
-  static std::mutex _map_mutex;
-
-  static thread_local inline std::stack<Function<build_mode>>  _functions;
-  static thread_local inline std::stack<std::string>  _subsystems;
-  static thread_local inline std::stack<std::string>  _sessions;
-
-  // all accesses require modifying data
-  // no advantage to use a readers-writer lock (a.k.a. shared_mutex)
-  static void upsert_profile_map(const ProfileData &profile_record) {
-
-  }
-
-  void write_profile_map() {
-    // sort descending by key
-    std::multimap<double, ProfileKey, std::greater<>> sorted_profiles;
-    sorted_profiles.reserve(_profile_map.size());
-
-    // or sorted_profiles.copy(_profile_map.keys())
-    //    sorted_profiles.sort()
-
-    for (const auto &profile : _profile_map) {
-      sorted_profiles.push_back(profile.first);
-    }
-
-    for (const auto &profile : sorted_profiles) {
-      // std::cout << _profile_map[profile] << ' ';
-    }
-  }
-
-  void check_create_program_thread() {
-    Program::check_create();
-    Thread::check_create();
-  }
-
-  void check_destroy_program_thread() {
-    if (_functions.empty()) {
-      Thread::destroy();
-    }
-    if (Thread::all_threads_done()) {
-      write_profile_map();
-      Program::check_destroy();
-    }
-  }
-};
-
 }   // namespace gioppler::dev
 
+// -----------------------------------------------------------------------------
 #endif // defined GIOPPLER_PROFILE_HPP

@@ -42,8 +42,24 @@
 using namespace std::literals;
 
 // -----------------------------------------------------------------------------
+// https://www.lucidchart.com/techblog/2019/12/06/json-compression-alternative-binary-formats-and-compression-methods/
+// Summary: sending plain JSON data compressed with Brotli(10) works really well
+// Brotli works well for compressing JSON (textual) data and is supported by web browsers
+// default quality is 11
 #if defined(GIOPLER_HAVE_BROTLI)
-
+#include <brotli/encode.h>
+std::string compress_json(std::string_view json) {
+  std::string output;
+  std::size_t output_size = BrotliEncoderMaxCompressedSize(json.size());
+  assert(output_size);
+  output.reserve(output_size);
+  const BROTLI_BOOL status = BrotliEncoderCompress(BROTLI_DEFAULT_QUALITY, BROTLI_DEFAULT_WINDOW, BROTLI_MODE_TEXT,
+                                                   json.size(), reinterpret_cast<const uint8_t *>(json.data()),
+                                                   &output_size, reinterpret_cast<uint8_t *>(output.data()));
+  assert(status == BROTLI_TRUE);
+  output.resize(output_size);
+  return output;
+}
 #endif
 
 // -----------------------------------------------------------------------------

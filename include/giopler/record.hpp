@@ -487,7 +487,7 @@ std::string record_to_json(const std::vector<std::string>& fields, std::shared_p
 }
 
 // -----------------------------------------------------------------------------
-// these are updated at prof::Function class
+// these are updated at dev::Function class
 static inline thread_local std::string g_parent_function_name;
 static inline thread_local std::string g_function_name;
 
