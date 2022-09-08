@@ -250,28 +250,6 @@ class LinuxEvents {
     _fd_hw_branch_instructions_misses_group->enable_events();
   }
 
-// - prof.sw.cpu_clock            - real      - CPU clock, a high-resolution per-CPU timer. (secs)
-// - prof.sw.task_clock           - real      - clock count specific to the task that is running. (secs)
-// - prof.sw.page_faults          - integer   - number of page faults
-// - prof.sw.context_switches     - integer   - counts context switches
-// - prof.sw.cpu_migrations       - integer   - number of times the process has migrated to a new CPU
-// - prof.sw.page_faults_min      - integer   - number of minor page faults
-// - prof.sw.page_faults_maj      - integer   - number of major page faults. These required disk I/O to handle
-// - prof.sw.alignment_faults     - integer   - counts the number of alignment faults. Zero on x86
-// - prof.sw.emulation_faults     - integer   - counts the number of emulation faults
-
-// - prof.hw.cpu_cycles           - integer   - Total cycles
-// - prof.hw.instructions         - integer   - Retired instructions (i.e., executed)
-
-// - prof.hw.stall_cycles_front   - integer   - Stalled cycles during issue in the frontend
-// - prof.hw.stall_cycles_back    - integer   - Stalled cycles during retirement in the backend
-
-// - prof.hw.cache_references     - integer   - Cache accesses. Usually this indicates Last Level Cache accesses
-// - prof.hw.cache_misses         - integer   - Cache misses. Usually this indicates Last Level Cache misses
-
-// - prof.hw.branch_instructions  - integer   - Retired branch instructions (i.e., executed)
-// - prof.hw.branch_misses        - integer   - Mispredicted branch instructions
-
   Record get_snapshot() {
     return Record({
       {"prof.sw.cpu_clock"s,        ns_to_sec(_fd_sw_cpu_clock->read_event())},

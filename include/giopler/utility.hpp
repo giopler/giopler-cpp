@@ -185,8 +185,7 @@ get_output_filepath(const std::string_view directory = "<temp>"sv, const std::st
 }
 
 // -----------------------------------------------------------------------------
-using Timestamp     = std::chrono::system_clock::time_point;
-using TimestampDiff = std::chrono::duration<double>;
+using Timestamp = std::chrono::system_clock::time_point;
 
 // -----------------------------------------------------------------------------
 /// returns the current timestamp
@@ -200,6 +199,15 @@ std::uint64_t to_nanoseconds(const Timestamp ts) {
   const std::uint64_t timestamp_ns =
     std::chrono::duration_cast<std::chrono::nanoseconds>(ts.time_since_epoch()).count();
   return timestamp_ns;
+}
+
+// -----------------------------------------------------------------------------
+/// return seconds in double between the two timestamps
+double timestamp_diff(const Timestamp start, const Timestamp end) {
+  const std::uint64_t timestamp_start_ns = to_nanoseconds(start);
+  const std::uint64_t timestamp_end_ns   = to_nanoseconds(end);
+  const std::uint64_t delta_ns           = timestamp_end_ns - timestamp_start_ns;
+  return static_cast<double>(delta_ns) / 1000'000'000.0;
 }
 
 // -----------------------------------------------------------------------------

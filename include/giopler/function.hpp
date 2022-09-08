@@ -96,8 +96,12 @@ class Function {
  public:
   explicit Function([[maybe_unused]] const double workload = 0,
                     [[maybe_unused]] gioppler::source_location source_location = gioppler::source_location::current())
+    : _workload{workload},
+      _duration_total{},
+      _duration_children{}
   {
     if constexpr (g_build_mode == BuildMode::Dev || g_build_mode == BuildMode::Prof) {
+      _start_time               = now();
       _source_location          = std::make_unique<gioppler::source_location>(source_location);
       _old_parent_function_name = g_parent_function_name;
       _old_function_name        = g_function_name;
@@ -130,34 +134,41 @@ class Function {
           create_event_record(*_source_location, "trace"sv, "function_exit"sv));
       sink::g_sink_manager.write_record(record);
     } else if constexpr (g_build_mode == BuildMode::Prof) {
-      Record event_counters_end{read_event_counters()};
-
       std::shared_ptr<Record> record_total = std::make_shared<Record>(
           create_event_record(*_source_location, "profile"sv, "function_total"sv));
+      record_total->insert({{"prof.workload", _workload}});   // workload is same for total and self
       std::shared_ptr<Record> record_self = std::make_shared<Record>(record_total);
-      (*record_self)["evt.event"s] = "function_self"s;
+      (*record_self)["evt.event"s] = "function_self"s;   // insert() does not overwrite
 
-      subtract_number_record(event_counters_end, *_event_counters_start);
-      if (_parent_function_object) {
-        _parent_function_object->track_child(event_counters_end);
-      }
-      record_total->merge(event_counters_end);
+      _duration_total  = timestamp_diff(_start_time, now());
+      Record event_counters_total{read_event_counters()};
+      subtract_number_record(event_counters_total, *_event_counters_start);
+
+      track_child(_duration_total, event_counters_total);
+      record_total->merge(event_counters_total);
+      record_total->insert({{"prof.duration", _duration_total}});
       sink::g_sink_manager.write_record(record_total);
 
-      subtract_number_record(event_counters_end, *_event_counters_children);
-      record_self->merge(event_counters_end);
+      subtract_number_record(event_counters_total, *_event_counters_children);
+      record_self->merge(*_event_counters_children);
+      record_self->insert({{"prof.duration", _duration_total-_duration_children}});
       sink::g_sink_manager.write_record(record_self);
     }
   }
 
-  void track_child(const Record& child_record) {
-    add_number_record(*_event_counters_children, child_record);
+  void track_child(const double duration_total, const Record& record_event_counters_total) {
     if (_parent_function_object) {
-      _parent_function_object->track_child(child_record);
+      _parent_function_object->_duration_children += duration_total;
+      add_number_record(*_parent_function_object->_event_counters_children, record_event_counters_total);
     }
   }
 
  private:
+  const double _workload;
+  Timestamp _start_time;
+  double _duration_total;
+  double _duration_children;
+
   // use shared pointers to minimize their cost if build mode disables the class
   std::unique_ptr<gioppler::source_location> _source_location;
   std::string _old_parent_function_name;
