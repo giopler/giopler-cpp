@@ -73,7 +73,9 @@ namespace gioppler {
 // - loc.file                     - string    - source file name and path
 // - loc.line                     - integer   - line number
 // - loc.function                 - string    - function name and signature
-// - loc.parent_function          - string    - parent (calling) function name and signature
+
+// - trc.function                 - string    - last function traced via Function class
+// - trc.parent_function          - string    - parent (calling) function traced via Function class
 
 // - val.timestamp                - timestamp - when event occurred
 // - val.thread_id                - integer   - system thread id
@@ -293,7 +295,9 @@ const RecordCatalog& get_record_catalog() {
       {"loc.file"s,                           {RecordValue::Type::String,     "loc"s, 1}},
       {"loc.line"s,                           {RecordValue::Type::Integer,    "loc"s, 1}},
       {"loc.function"s,                       {RecordValue::Type::String,     "loc"s, 1}},
-      {"loc.parent_function"s,                {RecordValue::Type::String,     "loc"s, 1}},
+
+      {"trc.function"s,                       {RecordValue::Type::String,     "trc"s, 1}},
+      {"trc.parent_function"s,                {RecordValue::Type::String,     "trc"s, 1}},
 
       {"val.timestamp"s,                      {RecordValue::Type::Timestamp,  "val"s, 1}},
       {"val.thread_id"s,                      {RecordValue::Type::Integer,    "val"s, 1}},
@@ -483,6 +487,7 @@ std::string record_to_json(const std::vector<std::string>& fields, std::shared_p
 }
 
 // -----------------------------------------------------------------------------
+// these are updated at prof::Function class
 static inline thread_local std::string g_parent_function_name;
 static inline thread_local std::string g_function_name;
 
@@ -524,7 +529,9 @@ Record create_event_record(const source_location& source_location,
       {"loc.file",                source_location.file_name()},
       {"loc.line",                source_location.line()},
       {"loc.function",            source_location.function_name()},
-      {"loc.parent_function",     g_parent_function_name},
+
+      {"trc.function",            g_function_name},
+      {"trc.parent_function",     g_parent_function_name},
 
       {"val.timestamp",           now()},
       {"val.thread_id"s,          get_thread_id()},

@@ -228,7 +228,7 @@ class Ensure {
           source_location::current())
   : _uncaught_exceptions(std::uncaught_exceptions()),
     _condition_function(std::move(condition_function)),
-    _source_location(source_location)
+    _source_location{source_location}
   { }
 
   // check condition only on scope exit

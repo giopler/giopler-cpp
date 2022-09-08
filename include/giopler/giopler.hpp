@@ -38,8 +38,8 @@
 #include "giopler/trace.hpp"
 #include "giopler/log.hpp"
 
-#include "giopler/histogram.hpp"
 #include "giopler/counter.hpp"
+#include "giopler/profile.hpp"
 #include "giopler/exit.hpp"
 
 // -----------------------------------------------------------------------------

@@ -20,41 +20,124 @@
 // SOFTWARE.
 
 #pragma once
-#ifndef GIOPPLER_GIOPPLER_HPP
-#define GIOPPLER_GIOPPLER_HPP
+#ifndef GIOPPLER_PROFILE_HPP
+#define GIOPPLER_PROFILE_HPP
 
 #if __cplusplus < 202002L
 #error C++20 or newer support required to use this header-only library.
 #endif
 
-#include <atomic>
-#include <chrono>
-#include <deque>
-#include <filesystem>
-#include <functional>
-#include <iostream>
-#include <map>
 #include <memory>
-#include <mutex>
-#include <sstream>
-#include <stack>
-#include <stdexcept>
 #include <string>
-#include <thread>
-#include <unordered_map>
-#include <utility>
-#include <variant>
-#include <version>
-
-#include <cassert>
-#include <cerrno>
-#include <cstdlib>
-#include <cstring>
 
 // -----------------------------------------------------------------------------
-namespace gioppler {
+namespace gioppler::dev {
 
-// ---------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+extern Record read_event_counters();
+
+// -----------------------------------------------------------------------------
+/// target += other
+// assumes all entries are numeric (Integer or Real)
+// assumes the other Record contains all key values
+void add_number_record(Record& target, const Record& other) {
+  for (const auto& [key, value] : other) {
+    if (value.get_type() == RecordValue::Type::Integer) {
+      if (!target.contains(key)) {
+        target.insert({key, 0});
+      }
+      target.at(key) = target.at(key).get_integer() + value.get_integer();
+    } else if (value.get_type() == RecordValue::Type::Real) {
+      if (!target.contains(key)) {
+        target.insert({key, 0.0});
+      }
+      target.at(key) = target.at(key).get_real() + value.get_real();
+    } else {
+      assert(false);
+    }
+  }
+}
+
+// -----------------------------------------------------------------------------
+/// target -= other
+// assumes all entries are numeric (Integer or Real)
+// assumes the other Record contains all key values
+// clamps values at zero - does not go negative
+void subtract_number_record(Record& target, const Record& other) {
+  for (const auto& [key, value] : other) {
+    if (value.get_type() == RecordValue::Type::Integer) {
+      if (!target.contains(key)) {
+        target.insert({key, 0});
+      }
+      if (target.at(key).get_integer() <= value.get_integer()) {
+        target.at(key) = 0;
+      } else {
+        target.at(key) = target.at(key).get_integer() - value.get_integer();
+      }
+    } else if (value.get_type() == RecordValue::Type::Real) {
+      if (!target.contains(key)) {
+        target.insert({key, 0.0});
+      }
+      if (target.at(key).get_real() <= value.get_real()) {
+        target.at(key) = 0.0;
+      } else {
+        target.at(key) = target.at(key).get_real() - value.get_real();
+      }
+    } else {
+      assert(false);
+    }
+  }
+}
+
+// -----------------------------------------------------------------------------
+class Function {
+ public:
+  Function([[maybe_unused]] const double workload = 0,
+           [[maybe_unused]] gioppler::source_location source_location = gioppler::source_location::current())
+  {
+    if constexpr (g_build_mode == BuildMode::Dev) {
+      std::shared_ptr<Record> record = std::make_shared<Record>(
+          create_event_record(source_location, "trace"sv, "function"sv));
+      sink::g_sink_manager.write_record(record);
+    } else if constexpr (g_build_mode == BuildMode::Prof) {
+      _source_location         = std::make_unique<gioppler::source_location>(source_location);
+      _event_counters_start    = std::make_unique<Record>(read_event_counters());
+      _event_counters_children = std::make_unique<Record>();
+    }
+  }
+
+  ~Function() {
+    if constexpr (g_build_mode == BuildMode::Prof) {
+      Record event_counters_end{read_event_counters()};
+
+      std::shared_ptr<Record> record_total = std::make_shared<Record>(
+          create_event_record(*_source_location, "profile"sv, "function_total"sv));
+      std::shared_ptr<Record> record_self = std::make_shared<Record>(record_total);
+      (*record_self)["evt.event"s] = "function_self"s;
+
+      subtract_number_record(event_counters_end, *_event_counters_start);
+      record_total->merge(event_counters_end);
+      sink::g_sink_manager.write_record(record_total);
+
+      subtract_number_record(event_counters_end, *_event_counters_children);
+      record_self->merge(event_counters_end);
+      sink::g_sink_manager.write_record(record_self);
+    }
+  }
+
+  void track_child(const Record& child_record) {
+    add_number_record(*_event_counters_children, child_record);
+  }
+
+ private:
+  std::unique_ptr<gioppler::source_location> _source_location;
+  // use shared pointers to minimize their cost if build mode disables the class
+  std::unique_ptr<Record> _event_counters_start;
+  std::unique_ptr<Record> _event_counters_children;
+};
+
+
+// -----------------------------------------------------------------------------
 class ProfileData {
  public:
   explicit ProfileData(const std::string_view parent_function_signature,
@@ -182,6 +265,6 @@ class Function {
   }
 };
 
-}   // namespace gioppler
+}   // namespace gioppler::dev
 
-#endif // defined GIOPPLER_GIOPPLER_HPP
+#endif // defined GIOPPLER_PROFILE_HPP
