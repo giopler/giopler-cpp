@@ -28,13 +28,10 @@
 #error Support for C++20 or newer is required to use this library.
 #endif
 
-#include <set>
-
-#include "giopler/config.hpp"
+#include "giopler/record.hpp"
 
 // -----------------------------------------------------------------------------
 /// Performance Monitoring Counters (pmc), a Linux feature.
-#if defined(GIOPPLER_PLATFORM_LINUX)      // Linux kernel; could be GNU or Android
 #include <linux/perf_event.h>             // Definition of PERF_* constants
 #include <linux/hw_breakpoint.h>          // Definition of HW_* constants
 #include <sys/syscall.h>                  // Definition of SYS_* constants
@@ -42,61 +39,38 @@
 #include <unistd.h>
 
 // -----------------------------------------------------------------------------
-namespace gioppler::prof
+namespace gioppler::dev
 {
-
-// -----------------------------------------------------------------------------
- class LinuxPlatformCounters : public PlatformCounters
-{
- public:
-  ~LinuxPlatformCounters() override = default;
-
-  std::set<std::string> get_counter_categories() override {
-    return {"prof.linux.sw", "prof.linux.hw"};
-  }
-
-  std::vector<uint64_t>    get_counter_values() override {
-
-  }
-};
-
-// -----------------------------------------------------------------------------
-/// platform-specific counters; one per thread
-// declared in counter.hpp
-inline thread_local std::unique_ptr<PlatformCounters> g_platform_counters{std::make_unique<LinuxPlatformCounters>()};
 
 // -----------------------------------------------------------------------------
 class LinuxEvent {
  public:
-  LinuxEvent() : _num_events(0) {}
+  LinuxEvent() : _num_events{} { }
 
-  LinuxEvent(const std::string_view name, const uint32_t event_type, const uint64_t event) {
-    _num_events = 1;
+  LinuxEvent(const std::string_view name, const uint32_t event_type, const uint64_t event) : _num_events{1} {
     _name1 = name;
-    _fd1 = open_event(name, event_type, event, -1);
+    _fd1   = open_event(name, event_type, event, -1);
   }
 
   LinuxEvent(const std::string_view name1, const uint32_t event_type1, const uint64_t event1,
-             const std::string_view name2, const uint32_t event_type2, const uint64_t event2) {
-    _num_events = 2;
+             const std::string_view name2, const uint32_t event_type2, const uint64_t event2) : _num_events{2} {
     _name1 = name1;
-    _fd1 = open_event(name1, event_type1, event1, -1);
+    _fd1   = open_event(name1, event_type1, event1, -1);
     _name2 = name2;
-    _fd2 = open_event(name2, event_type2, event2, _fd1);
+    _fd2   = open_event(name2, event_type2, event2, _fd1);
 
     reset_event(name1, _fd1, (_num_events == 1 ? Group::single : Group::leader));
   }
 
   LinuxEvent(const std::string_view name1, const uint32_t event_type1, const uint64_t event1,
              const std::string_view name2, const uint32_t event_type2, const uint64_t event2,
-             const std::string_view name3, const uint32_t event_type3, const uint64_t event3) {
-    _num_events = 3;
+             const std::string_view name3, const uint32_t event_type3, const uint64_t event3) : _num_events{3} {
     _name1 = name1;
-    _fd1 = open_event(name1, event_type1, event1, -1);
+    _fd1   = open_event(name1, event_type1, event1, -1);
     _name2 = name2;
-    _fd2 = open_event(name2, event_type2, event2, _fd1);
+    _fd2   = open_event(name2, event_type2, event2, _fd1);
     _name3 = name3;
-    _fd3 = open_event(name3, event_type3, event3, _fd1);
+    _fd3   = open_event(name3, event_type3, event3, _fd1);
 
     reset_event(name1, _fd1, (_num_events == 1 ? Group::single : Group::leader));
   }
@@ -104,16 +78,15 @@ class LinuxEvent {
   LinuxEvent(const std::string_view name1, const uint32_t event_type1, const uint64_t event1,
              const std::string_view name2, const uint32_t event_type2, const uint64_t event2,
              const std::string_view name3, const uint32_t event_type3, const uint64_t event3,
-             const std::string_view name4, const uint32_t event_type4, const uint64_t event4) {
-    _num_events = 4;
+             const std::string_view name4, const uint32_t event_type4, const uint64_t event4) : _num_events{4} {
     _name1 = name1;
-    _fd1 = open_event(name1, event_type1, event1, -1);
+    _fd1   = open_event(name1, event_type1, event1, -1);
     _name2 = name2;
-    _fd2 = open_event(name2, event_type2, event2, _fd1);
+    _fd2   = open_event(name2, event_type2, event2, _fd1);
     _name3 = name3;
-    _fd3 = open_event(name3, event_type3, event3, _fd1);
+    _fd3   = open_event(name3, event_type3, event3, _fd1);
     _name4 = name4;
-    _fd4 = open_event(name4, event_type4, event4, _fd1);
+    _fd4   = open_event(name4, event_type4, event4, _fd1);
 
     reset_event(name1, _fd1, (_num_events == 1 ? Group::single : Group::leader));
   }
@@ -135,6 +108,10 @@ class LinuxEvent {
 
   void enable_events() {
     enable_event(_name1, _fd1, (_num_events == 1 ? Group::single : Group::leader));
+  }
+
+  uint64_t read_event() {
+    return read_event1();
   }
 
   uint64_t read_event1() {
@@ -159,16 +136,9 @@ class LinuxEvent {
 
  private:
   enum class Group { leader, single };
-  int _num_events;
+  const int _num_events;
   std::string_view _name1, _name2, _name3, _name4;
   int _fd1, _fd2, _fd3, _fd4;
-
-  struct ReadData {
-    uint64_t value;         /* The value of the event */
-    uint64_t time_enabled;  /* if PERF_FORMAT_TOTAL_TIME_ENABLED */
-    uint64_t time_running;  /* if PERF_FORMAT_TOTAL_TIME_RUNNING */
-    uint64_t id;            /* if PERF_FORMAT_ID */
-  };
 
   // measures the calling process/thread on any CPU
   // state saved/restored on context switch
@@ -232,6 +202,13 @@ class LinuxEvent {
   /// read the counter value
   // the value is scaled to account for performance counter multiplexing
   static uint64_t read_event(const std::string_view name, const int fd) {
+    struct ReadData {
+      uint64_t value;         /* The value of the event */
+      uint64_t time_enabled;  /* if PERF_FORMAT_TOTAL_TIME_ENABLED */
+      uint64_t time_running;  /* if PERF_FORMAT_TOTAL_TIME_RUNNING */
+      uint64_t id;            /* if PERF_FORMAT_ID */
+    };
+
     ReadData read_data{};
     const ssize_t bytes_read = read(fd, &read_data, sizeof(read_data));
     if (bytes_read == -1) {
@@ -239,266 +216,181 @@ class LinuxEvent {
       std::exit(EXIT_FAILURE);
     }
 
-    const double active_pct = static_cast<double>(read_data.time_running) / static_cast<double>(read_data.time_enabled);
+    const double active_pct       = static_cast<double>(read_data.time_running) / static_cast<double>(read_data.time_enabled);
     const uint64_t scaled_counter = static_cast<uint64_t>(static_cast<double>(read_data.value) * (1.0 / active_pct));
     return scaled_counter;
   }
 };
 
-// ---------------------------------------------------------------------------
-class LinuxEventsData {
- public:
-  explicit LinuxEventsData() = default;
-
-  static void write_header(std::ostream &os) {
-    os << "TotalCpuSec,TotalTaskIdlePct,TotalPageFaultMajorPerSec,"
-       << "TotalCyclesPerInstr,TotalIssueStallPct,TotalRetireStallPct,TotalCacheMissPct,TotalBranchMissPct,"
-       << "SelfCpuSec,SelfTaskIdlePct,SelfPageFaultMajorPerSec,"
-       << "SelfCyclesPerInstr,SelfIssueStallPct,SelfRetireStallPct,SelfCacheMissPct,SelfBranchMissPct";
-  }
-
-  void write_data(std::ostream &os) {
-    os << get_cpu_seconds() << ','
-       << get_task_idle_pct() << ','
-       << get_page_fault_major_per_sec() << ','
-       << get_cycles_per_instr() << ','
-       << get_issue_stall_pct() << ','
-       << get_retire_stall_pct() << ','
-       << get_cache_miss_pct() << ','
-       << get_branch_miss_pct();
-  }
-
-  LinuxEventsData &operator+=(const LinuxEventsData &rhs) {
-    _fd_sw_cpu_clock += rhs._fd_sw_cpu_clock;
-    _fd_sw_task_clock += rhs._fd_sw_task_clock;
-    _fd_sw_page_faults += rhs._fd_sw_page_faults;
-    _fd_sw_context_switches += rhs._fd_sw_context_switches;
-    _fd_sw_cpu_migrations += rhs._fd_sw_cpu_migrations;
-    _fd_sw_page_faults_min += rhs._fd_sw_page_faults_min;
-    _fd_sw_page_faults_maj += rhs._fd_sw_page_faults_maj;
-    _fd_sw_alignment_faults += rhs._fd_sw_alignment_faults;
-    _fd_sw_emulation_faults += rhs._fd_sw_emulation_faults;
-    _fd_hw_cpu_cycles += rhs._fd_hw_cpu_cycles;
-    _fd_hw_instructions += rhs._fd_hw_instructions;
-    _fd_hw_stalled_cycles_frontend += rhs._fd_hw_stalled_cycles_frontend;
-    _fd_hw_stalled_cycles_backend += rhs._fd_hw_stalled_cycles_backend;
-    _fd_hw_cache_references += rhs._fd_hw_cache_references;
-    _fd_hw_cache_misses += rhs._fd_hw_cache_misses;
-    _fd_hw_branch_instructions += rhs._fd_hw_branch_instructions;
-    _fd_hw_branch_misses += rhs._fd_hw_branch_misses;
-    return *this;
-  }
-
-  friend LinuxEventsData operator+(LinuxEventsData lhs, const LinuxEventsData &rhs) {
-    lhs += rhs;
-    return lhs;
-  }
-
-  LinuxEventsData &operator-=(const LinuxEventsData &rhs) {
-    _fd_sw_cpu_clock -= rhs._fd_sw_cpu_clock;
-    _fd_sw_task_clock -= rhs._fd_sw_task_clock;
-    _fd_sw_page_faults -= rhs._fd_sw_page_faults;
-    _fd_sw_context_switches -= rhs._fd_sw_context_switches;
-    _fd_sw_cpu_migrations -= rhs._fd_sw_cpu_migrations;
-    _fd_sw_page_faults_min -= rhs._fd_sw_page_faults_min;
-    _fd_sw_page_faults_maj -= rhs._fd_sw_page_faults_maj;
-    _fd_sw_alignment_faults -= rhs._fd_sw_alignment_faults;
-    _fd_sw_emulation_faults -= rhs._fd_sw_emulation_faults;
-    _fd_hw_cpu_cycles -= rhs._fd_hw_cpu_cycles;
-    _fd_hw_instructions -= rhs._fd_hw_instructions;
-    _fd_hw_stalled_cycles_frontend -= rhs._fd_hw_stalled_cycles_frontend;
-    _fd_hw_stalled_cycles_backend -= rhs._fd_hw_stalled_cycles_backend;
-    _fd_hw_cache_references -= rhs._fd_hw_cache_references;
-    _fd_hw_cache_misses -= rhs._fd_hw_cache_misses;
-    _fd_hw_branch_instructions -= rhs._fd_hw_branch_instructions;
-    _fd_hw_branch_misses -= rhs._fd_hw_branch_misses;
-    return *this;
-  }
-
-  friend LinuxEventsData operator-(LinuxEventsData lhs, const LinuxEventsData &rhs) {
-    lhs -= rhs;
-    return lhs;
-  }
-
-  double get_cpu_seconds() {
-    return static_cast<double>(_fd_sw_cpu_clock) / 1'000'000'000.0;
-  }
-
-  double get_task_idle_pct() {
-    return 1.0 - (static_cast<double>(_fd_sw_task_clock) / static_cast<double>(_fd_sw_cpu_clock));
-  }
-
-  double get_page_fault_major_per_sec() {
-    return static_cast<double>(_fd_sw_page_faults_maj) / get_cpu_seconds();
-  }
-
-  double get_cycles_per_instr() {
-    return static_cast<double>(_fd_hw_cpu_cycles) / static_cast<double>(_fd_hw_instructions);
-  }
-
-  double get_issue_stall_pct() {
-    return static_cast<double>(_fd_hw_stalled_cycles_frontend) / static_cast<double>(_fd_hw_cpu_cycles);
-  }
-
-  double get_retire_stall_pct() {
-    return static_cast<double>(_fd_hw_stalled_cycles_backend) / static_cast<double>(_fd_hw_cpu_cycles);
-  }
-
-  double get_cache_miss_pct() {
-    return static_cast<double>(_fd_hw_cache_misses) / static_cast<double>(_fd_hw_cache_references);
-  }
-
-  double get_branch_miss_pct() {
-    return static_cast<double>(_fd_hw_branch_misses) / static_cast<double>(_fd_hw_branch_instructions);
-  }
-
-// ---------------------------------------------------------------------------
-  uint64_t _fd_sw_cpu_clock;         // This reports the CPU clock, a high-resolution per-CPU timer. (nanos)
-  uint64_t _fd_sw_task_clock;        // This reports a clock count specific to the task that is running. (nanos)
-  uint64_t _fd_sw_page_faults;       // This reports the number of page faults.
-  uint64_t _fd_sw_context_switches;  // This counts context switches.
-  uint64_t _fd_sw_cpu_migrations;    // This reports the number of times the process has migrated to a new CPU.
-  uint64_t _fd_sw_page_faults_min;   // This counts the number of minor page faults.
-  uint64_t _fd_sw_page_faults_maj;   // This counts the number of major page faults. These required disk I/O to handle.
-  uint64_t _fd_sw_alignment_faults;  // This counts the number of alignment faults. Zero on x86.
-  uint64_t _fd_sw_emulation_faults;  // This counts the number of emulation faults.
-
-  uint64_t _fd_hw_cpu_cycles;               // Total cycles.
-  uint64_t _fd_hw_instructions;             // Retired instructions.
-  uint64_t _fd_hw_stalled_cycles_frontend;  // Stalled cycles during issue.
-  uint64_t _fd_hw_stalled_cycles_backend;   // Stalled cycles during retirement.
-
-  uint64_t _fd_hw_cache_references;  // Cache accesses.  Usually this indicates Last Level Cache accesses.
-  uint64_t _fd_hw_cache_misses;      // Cache misses.  Usually this indicates Last Level Cache misses.
-
-  uint64_t _fd_hw_branch_instructions; // Retired branch instructions.
-  uint64_t _fd_hw_branch_misses;       // Mispredicted branch instructions.
-};
-
-// ---------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
 class LinuxEvents {
  public:
   explicit LinuxEvents() {
-    open_events();
+    if constexpr (g_build_mode == BuildMode::Prof) {
+      open_events();
+    }
   }
 
   ~LinuxEvents() = default;
 
   void enable_events() {
-    _fd_sw_cpu_clock.enable_events();
-    _fd_sw_task_clock.enable_events();
-    _fd_sw_page_faults.enable_events();
-    _fd_sw_context_switches.enable_events();
-    _fd_sw_cpu_migrations.enable_events();
-    _fd_sw_page_faults_min.enable_events();
-    _fd_sw_page_faults_maj.enable_events();
-    _fd_sw_alignment_faults.enable_events();
-    _fd_sw_emulation_faults.enable_events();
+    _fd_sw_cpu_clock->enable_events();
+    _fd_sw_task_clock->enable_events();
+    _fd_sw_page_faults->enable_events();
+    _fd_sw_context_switches->enable_events();
+    _fd_sw_cpu_migrations->enable_events();
+    _fd_sw_page_faults_min->enable_events();
+    _fd_sw_page_faults_maj->enable_events();
+    _fd_sw_alignment_faults->enable_events();
+    _fd_sw_emulation_faults->enable_events();
 
-    _fd_hw_cpu_cycles_instr_group.enable_events();
-    _fd_hw_cache_references_misses_group.enable_events();
-    _fd_hw_branch_instructions_misses_group.enable_events();
+    _fd_hw_cpu_cycles_instr_group->enable_events();
+    _fd_hw_cpu_stalled_cycles_group->enable_events();
+    _fd_hw_cache_references_misses_group->enable_events();
+    _fd_hw_branch_instructions_misses_group->enable_events();
   }
 
-  LinuxEventsData get_snapshot() {
-    LinuxEventsData data{};
-    data._fd_sw_cpu_clock = _fd_sw_cpu_clock.read_event1();
-    data._fd_sw_task_clock = _fd_sw_task_clock.read_event1();
-    data._fd_sw_page_faults = _fd_sw_page_faults.read_event1();
-    data._fd_sw_context_switches = _fd_sw_context_switches.read_event1();
-    data._fd_sw_cpu_migrations = _fd_sw_cpu_migrations.read_event1();
-    data._fd_sw_page_faults_min = _fd_sw_page_faults_min.read_event1();
-    data._fd_sw_page_faults_maj = _fd_sw_page_faults_maj.read_event1();
-    data._fd_sw_alignment_faults = _fd_sw_alignment_faults.read_event1();
-    data._fd_sw_emulation_faults = _fd_sw_emulation_faults.read_event1();
+// - prof.sw.cpu_clock            - real      - CPU clock, a high-resolution per-CPU timer. (secs)
+// - prof.sw.task_clock           - real      - clock count specific to the task that is running. (secs)
+// - prof.sw.page_faults          - integer   - number of page faults
+// - prof.sw.context_switches     - integer   - counts context switches
+// - prof.sw.cpu_migrations       - integer   - number of times the process has migrated to a new CPU
+// - prof.sw.page_faults_min      - integer   - number of minor page faults
+// - prof.sw.page_faults_maj      - integer   - number of major page faults. These required disk I/O to handle
+// - prof.sw.alignment_faults     - integer   - counts the number of alignment faults. Zero on x86
+// - prof.sw.emulation_faults     - integer   - counts the number of emulation faults
 
-    data._fd_hw_cpu_cycles = _fd_hw_cpu_cycles_instr_group.read_event1();
-    data._fd_hw_instructions = _fd_hw_cpu_cycles_instr_group.read_event2();
-    data._fd_hw_stalled_cycles_frontend = _fd_hw_cpu_cycles_instr_group.read_event3();
-    data._fd_hw_stalled_cycles_backend = _fd_hw_cpu_cycles_instr_group.read_event4();
+// - prof.hw.cpu_cycles           - integer   - Total cycles
+// - prof.hw.instructions         - integer   - Retired instructions (i.e., executed)
 
-    data._fd_hw_cache_references = _fd_hw_cache_references_misses_group.read_event1();
-    data._fd_hw_cache_misses = _fd_hw_cache_references_misses_group.read_event2();
+// - prof.hw.stall_cycles_front   - integer   - Stalled cycles during issue in the frontend
+// - prof.hw.stall_cycles_back    - integer   - Stalled cycles during retirement in the backend
 
-    data._fd_hw_branch_instructions = _fd_hw_branch_instructions_misses_group.read_event1();
-    data._fd_hw_branch_misses = _fd_hw_branch_instructions_misses_group.read_event2();
-    return data;
+// - prof.hw.cache_references     - integer   - Cache accesses. Usually this indicates Last Level Cache accesses
+// - prof.hw.cache_misses         - integer   - Cache misses. Usually this indicates Last Level Cache misses
+
+// - prof.hw.branch_instructions  - integer   - Retired branch instructions (i.e., executed)
+// - prof.hw.branch_misses        - integer   - Mispredicted branch instructions
+
+  Record get_snapshot() {
+    return Record({
+      {"prof.sw.cpu_clock"s,        ns_to_sec(_fd_sw_cpu_clock->read_event())},
+      {"prof.sw.task_clock"s,       ns_to_sec(_fd_sw_task_clock->read_event())},
+      {"prof.sw.page_faults"s,      _fd_sw_page_faults->read_event()},
+      {"prof.sw.context_switches"s, _fd_sw_context_switches->read_event()},
+      {"prof.sw.cpu_migrations"s,   _fd_sw_cpu_migrations->read_event()},
+      {"prof.sw.page_faults_min"s,  _fd_sw_page_faults_min->read_event()},
+      {"prof.sw.page_faults_maj"s,  _fd_sw_page_faults_maj->read_event()},
+      {"prof.sw.alignment_faults"s, _fd_sw_alignment_faults->read_event()},
+      {"prof.sw.emulation_faults"s, _fd_sw_emulation_faults->read_event()},
+
+      {""s, _fd_hw_cpu_cycles_instr_group->read_event1()},
+      {""s, _fd_hw_cpu_cycles_instr_group->read_event2()},
+
+      {""s, _fd_hw_cpu_stalled_cycles_group->read_event1()},
+      {""s, _fd_hw_cpu_stalled_cycles_group->read_event2()},
+
+      {""s, _fd_hw_cache_references_misses_group->read_event1()},
+      {""s, _fd_hw_cache_references_misses_group->read_event2()},
+
+      {""s, _fd_hw_branch_instructions_misses_group->read_event1()},
+      {""s, _fd_hw_branch_instructions_misses_group->read_event2()}
+    });
   }
 
  private:
-  LinuxEvent _fd_sw_cpu_clock;         // This reports the CPU clock, a high-resolution per-CPU timer.
-  LinuxEvent _fd_sw_task_clock;        // This reports a clock count specific to the task that is running.
-  LinuxEvent _fd_sw_page_faults;       // This reports the number of page faults.
-  LinuxEvent _fd_sw_context_switches;  // This counts context switches.
-  LinuxEvent _fd_sw_cpu_migrations;    // This reports the number of times the process has migrated to a new CPU.
-  LinuxEvent _fd_sw_page_faults_min;   // This counts the number of minor page faults.
-  LinuxEvent
-      _fd_sw_page_faults_maj;   // This counts the number of major page faults. These required disk I/O to handle.
-  LinuxEvent _fd_sw_alignment_faults;  // This counts the number of alignment faults.
-  LinuxEvent _fd_sw_emulation_faults;  // This  counts the number of emulation faults.
+  std::unique_ptr<LinuxEvent> _fd_sw_cpu_clock;         // This reports the CPU clock, a high-resolution per-CPU timer.
+  std::unique_ptr<LinuxEvent> _fd_sw_task_clock;        // This reports a clock count specific to the task that is running.
+  std::unique_ptr<LinuxEvent> _fd_sw_page_faults;       // This reports the number of page faults.
+  std::unique_ptr<LinuxEvent> _fd_sw_context_switches;  // This counts context switches.
+  std::unique_ptr<LinuxEvent> _fd_sw_cpu_migrations;    // This reports the number of times the process has migrated to a new CPU.
+  std::unique_ptr<LinuxEvent> _fd_sw_page_faults_min;   // This counts the number of minor page faults.
+  std::unique_ptr<LinuxEvent> _fd_sw_page_faults_maj;   // This counts the number of major page faults. These required disk I/O to handle.
+  std::unique_ptr<LinuxEvent> _fd_sw_alignment_faults;  // This counts the number of alignment faults.
+  std::unique_ptr<LinuxEvent> _fd_sw_emulation_faults;  // This  counts the number of emulation faults.
 
   // Total cycles.
   // Retired instructions.
+  std::unique_ptr<LinuxEvent> _fd_hw_cpu_cycles_instr_group;
+
   // Stalled cycles during issue.
   // Stalled cycles during retirement.
-  LinuxEvent _fd_hw_cpu_cycles_instr_group;
+  std::unique_ptr<LinuxEvent> _fd_hw_cpu_stalled_cycles_group;
 
   // Cache accesses.  Usually this indicates Last Level Cache accesses.
   // Cache misses.  Usually this indicates Last Level Cache misses.
-  LinuxEvent _fd_hw_cache_references_misses_group;
+  std::unique_ptr<LinuxEvent> _fd_hw_cache_references_misses_group;
 
   // Retired branch instructions.
   // Mispredicted branch instructions.
-  LinuxEvent _fd_hw_branch_instructions_misses_group;
+  std::unique_ptr<LinuxEvent> _fd_hw_branch_instructions_misses_group;
 
+  // ---------------------------------------------------------------------------
   void open_events() {
-    _fd_sw_cpu_clock = LinuxEvent("PERF_COUNT_SW_CPU_CLOCK",
-                                  PERF_TYPE_SOFTWARE, PERF_COUNT_SW_CPU_CLOCK);
-    _fd_sw_task_clock = LinuxEvent("PERF_COUNT_SW_TASK_CLOCK",
-                                   PERF_TYPE_SOFTWARE, PERF_COUNT_SW_TASK_CLOCK);
-    _fd_sw_page_faults = LinuxEvent("PERF_COUNT_SW_PAGE_FAULTS",
-                                    PERF_TYPE_SOFTWARE, PERF_COUNT_SW_PAGE_FAULTS);
-    _fd_sw_context_switches = LinuxEvent("PERF_COUNT_SW_CONTEXT_SWITCHES",
-                                         PERF_TYPE_SOFTWARE, PERF_COUNT_SW_CONTEXT_SWITCHES);
-    _fd_sw_cpu_migrations = LinuxEvent("PERF_COUNT_SW_CPU_MIGRATIONS",
-                                       PERF_TYPE_SOFTWARE, PERF_COUNT_SW_CPU_MIGRATIONS);
-    _fd_sw_page_faults_min = LinuxEvent("PERF_COUNT_SW_PAGE_FAULTS_MIN",
-                                        PERF_TYPE_SOFTWARE, PERF_COUNT_SW_PAGE_FAULTS_MIN);
-    _fd_sw_page_faults_maj = LinuxEvent("PERF_COUNT_SW_PAGE_FAULTS_MAJ",
-                                        PERF_TYPE_SOFTWARE, PERF_COUNT_SW_PAGE_FAULTS_MAJ);
-    _fd_sw_alignment_faults = LinuxEvent("PERF_COUNT_SW_ALIGNMENT_FAULTS",
-                                         PERF_TYPE_SOFTWARE, PERF_COUNT_SW_ALIGNMENT_FAULTS);
-    _fd_sw_emulation_faults = LinuxEvent("PERF_COUNT_SW_EMULATION_FAULTS",
-                                         PERF_TYPE_SOFTWARE, PERF_COUNT_SW_EMULATION_FAULTS);
+    _fd_sw_cpu_clock = std::make_unique<LinuxEvent>("PERF_COUNT_SW_CPU_CLOCK",
+                                          PERF_TYPE_SOFTWARE, PERF_COUNT_SW_CPU_CLOCK);
+    _fd_sw_task_clock = std::make_unique<LinuxEvent>("PERF_COUNT_SW_TASK_CLOCK",
+                                            PERF_TYPE_SOFTWARE, PERF_COUNT_SW_TASK_CLOCK);
+    _fd_sw_page_faults = std::make_unique<LinuxEvent>("PERF_COUNT_SW_PAGE_FAULTS",
+                                             PERF_TYPE_SOFTWARE, PERF_COUNT_SW_PAGE_FAULTS);
+    _fd_sw_context_switches = std::make_unique<LinuxEvent>("PERF_COUNT_SW_CONTEXT_SWITCHES",
+                                                  PERF_TYPE_SOFTWARE, PERF_COUNT_SW_CONTEXT_SWITCHES);
+    _fd_sw_cpu_migrations = std::make_unique<LinuxEvent>("PERF_COUNT_SW_CPU_MIGRATIONS",
+                                                PERF_TYPE_SOFTWARE, PERF_COUNT_SW_CPU_MIGRATIONS);
+    _fd_sw_page_faults_min = std::make_unique<LinuxEvent>("PERF_COUNT_SW_PAGE_FAULTS_MIN",
+                                                 PERF_TYPE_SOFTWARE, PERF_COUNT_SW_PAGE_FAULTS_MIN);
+    _fd_sw_page_faults_maj = std::make_unique<LinuxEvent>("PERF_COUNT_SW_PAGE_FAULTS_MAJ",
+                                                 PERF_TYPE_SOFTWARE, PERF_COUNT_SW_PAGE_FAULTS_MAJ);
+    _fd_sw_alignment_faults = std::make_unique<LinuxEvent>("PERF_COUNT_SW_ALIGNMENT_FAULTS",
+                                                  PERF_TYPE_SOFTWARE, PERF_COUNT_SW_ALIGNMENT_FAULTS);
+    _fd_sw_emulation_faults = std::make_unique<LinuxEvent>("PERF_COUNT_SW_EMULATION_FAULTS",
+                                                  PERF_TYPE_SOFTWARE, PERF_COUNT_SW_EMULATION_FAULTS);
 
     _fd_hw_cpu_cycles_instr_group =
-        LinuxEvent("PERF_COUNT_HW_CPU_CYCLES",
-                   PERF_TYPE_HARDWARE, PERF_COUNT_HW_CPU_CYCLES,
-                   "PERF_COUNT_HW_INSTRUCTIONS",
-                   PERF_TYPE_HARDWARE, PERF_COUNT_HW_INSTRUCTIONS,
-                   "PERF_COUNT_HW_STALLED_CYCLES_FRONTEND",
-                   PERF_TYPE_HARDWARE, PERF_COUNT_HW_STALLED_CYCLES_FRONTEND,
-                   "PERF_COUNT_HW_STALLED_CYCLES_BACKEND",
-                   PERF_TYPE_HARDWARE, PERF_COUNT_HW_STALLED_CYCLES_BACKEND);
+        std::make_unique<LinuxEvent>("PERF_COUNT_HW_CPU_CYCLES",
+                                     PERF_TYPE_HARDWARE, PERF_COUNT_HW_CPU_CYCLES,
+                                     "PERF_COUNT_HW_INSTRUCTIONS",
+                                     PERF_TYPE_HARDWARE, PERF_COUNT_HW_INSTRUCTIONS);
+
+    _fd_hw_cpu_stalled_cycles_group =
+        std::make_unique<LinuxEvent>("PERF_COUNT_HW_STALLED_CYCLES_FRONTEND",
+                                     PERF_TYPE_HARDWARE, PERF_COUNT_HW_STALLED_CYCLES_FRONTEND,
+                                     "PERF_COUNT_HW_STALLED_CYCLES_BACKEND",
+                                     PERF_TYPE_HARDWARE, PERF_COUNT_HW_STALLED_CYCLES_BACKEND);
 
     _fd_hw_cache_references_misses_group =
-        LinuxEvent("PERF_COUNT_HW_CACHE_REFERENCES",
-                   PERF_TYPE_HARDWARE, PERF_COUNT_HW_CACHE_REFERENCES,
-                   "PERF_COUNT_HW_CACHE_MISSES",
-                   PERF_TYPE_HARDWARE, PERF_COUNT_HW_CACHE_MISSES);
+        std::make_unique<LinuxEvent>("PERF_COUNT_HW_CACHE_REFERENCES",
+                                     PERF_TYPE_HARDWARE, PERF_COUNT_HW_CACHE_REFERENCES,
+                                     "PERF_COUNT_HW_CACHE_MISSES",
+                                     PERF_TYPE_HARDWARE, PERF_COUNT_HW_CACHE_MISSES);
+
     _fd_hw_branch_instructions_misses_group =
-        LinuxEvent("PERF_COUNT_HW_BRANCH_INSTRUCTIONS",
-                   PERF_TYPE_HARDWARE, PERF_COUNT_HW_BRANCH_INSTRUCTIONS,
-                   "PERF_COUNT_HW_BRANCH_MISSES",
-                   PERF_TYPE_HARDWARE, PERF_COUNT_HW_BRANCH_MISSES);
+        std::make_unique<LinuxEvent>("PERF_COUNT_HW_BRANCH_INSTRUCTIONS",
+                                     PERF_TYPE_HARDWARE, PERF_COUNT_HW_BRANCH_INSTRUCTIONS,
+                                     "PERF_COUNT_HW_BRANCH_MISSES",
+                                     PERF_TYPE_HARDWARE, PERF_COUNT_HW_BRANCH_MISSES);
+  }
+
+  /// convert nanosecond counter to floating point seconds
+  static double ns_to_sec(const std::uint64_t ns) {
+    constexpr double factor = 0.000'000'001;
+    return static_cast<double>(ns) * factor;
   }
 };
 
 // -----------------------------------------------------------------------------
-} // namespace gioppler::linux
+/// open the event counters when the thread is started
+static inline thread_local LinuxEvents g_linux_events;
 
 // -----------------------------------------------------------------------------
-#endif // GIOPPLER_PLATFORM_LINUX
+/// read platform-specific performance event counters
+// assumed to return the same set of keys on every invocation at a given platform
+Record read_event_counters() {
+  return g_linux_events.get_snapshot();
+}
+
+// -----------------------------------------------------------------------------
+} // namespace gioppler::linux
 
 // -----------------------------------------------------------------------------
 #endif // defined GIOPPLER_LINUX_COUNTER_HPP

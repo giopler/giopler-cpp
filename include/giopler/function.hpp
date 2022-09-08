@@ -31,15 +31,17 @@
 #include <string>
 
 // -----------------------------------------------------------------------------
-namespace gioppler::dev {
+#if defined(GIOPPLER_PLATFORM_LINUX)
+#include "giopler/linux/counter.hpp"
+#endif
 
 // -----------------------------------------------------------------------------
-extern Record read_event_counters();
+namespace gioppler::dev {
 
 // -----------------------------------------------------------------------------
 /// target += other
 // assumes all entries are numeric (Integer or Real)
-// assumes the other Record contains all key values
+// assumes the 'other' Record contains all key values
 void add_number_record(Record& target, const Record& other) {
   for (const auto& [key, value] : other) {
     if (value.get_type() == RecordValue::Type::Integer) {
@@ -61,7 +63,7 @@ void add_number_record(Record& target, const Record& other) {
 // -----------------------------------------------------------------------------
 /// target -= other
 // assumes all entries are numeric (Integer or Real)
-// assumes the other Record contains all key values
+// assumes the 'other' Record contains all key values
 // clamps values at zero - does not go negative
 void subtract_number_record(Record& target, const Record& other) {
   for (const auto& [key, value] : other) {
@@ -92,8 +94,8 @@ void subtract_number_record(Record& target, const Record& other) {
 // -----------------------------------------------------------------------------
 class Function {
  public:
-  Function([[maybe_unused]] const double workload = 0,
-           [[maybe_unused]] gioppler::source_location source_location = gioppler::source_location::current())
+  explicit Function([[maybe_unused]] const double workload = 0,
+                    [[maybe_unused]] gioppler::source_location source_location = gioppler::source_location::current())
   {
     if constexpr (g_build_mode == BuildMode::Dev || g_build_mode == BuildMode::Prof) {
       _source_location          = std::make_unique<gioppler::source_location>(source_location);
@@ -150,6 +152,9 @@ class Function {
 
   void track_child(const Record& child_record) {
     add_number_record(*_event_counters_children, child_record);
+    if (_parent_function_object) {
+      _parent_function_object->track_child(child_record);
+    }
   }
 
  private:
