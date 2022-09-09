@@ -216,9 +216,15 @@ class LinuxEvent {
       std::exit(EXIT_FAILURE);
     }
 
-    const double active_pct       = static_cast<double>(read_data.time_running) / static_cast<double>(read_data.time_enabled);
-    const uint64_t scaled_counter = static_cast<uint64_t>(static_cast<double>(read_data.value) * (1.0 / active_pct));
-    return scaled_counter;
+    if (read_data.time_enabled && read_data.time_running) {
+      const double active_pct       = static_cast<double>(read_data.time_running) / static_cast<double>(read_data.time_enabled);
+      const uint64_t scaled_counter = static_cast<uint64_t>(static_cast<double>(read_data.value) * (1.0 / active_pct));
+      // std::cout << name << " = " << scaled_counter << " <= " << read_data.value
+      //           << " (" << read_data.time_running << "/" << read_data.time_enabled << ")" << std::endl;
+      return scaled_counter;
+    } else {
+      return 0;
+    }
   }
 };
 
@@ -228,10 +234,11 @@ class LinuxEvents {
   explicit LinuxEvents() {
     if constexpr (g_build_mode == BuildMode::Prof) {
       open_events();
+      enable_events();
     }
   }
 
-  ~LinuxEvents() = default;
+  ~LinuxEvents() = default;   // events are closed when the objects are destroyed
 
   void enable_events() {
     _fd_sw_cpu_clock->enable_events();
@@ -250,6 +257,7 @@ class LinuxEvents {
     _fd_hw_branch_instructions_misses_group->enable_events();
   }
 
+  /// get the current values of the performance counters
   Record get_snapshot() {
     return Record({
       {"prof.sw.cpu_clock"s,        ns_to_sec(_fd_sw_cpu_clock->read_event())},

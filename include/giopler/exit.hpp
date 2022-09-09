@@ -49,25 +49,30 @@ class ExitFunction {
  public:
   ExitFunction() {
     // called on normal program termination
-    std::atexit(exit_function);
+    std::atexit(atexit_function);
 
     // normal program termination without completely cleaning resource
-    std::at_quick_exit(exit_function);
+    std::at_quick_exit(quick_exit_function);
 
     // called by the C++ runtime when the program cannot continue
-    _previous_terminate_handler = std::set_terminate(exit_function);
+    _previous_terminate_handler = std::set_terminate(terminate_function);
   }
 
-  /// function to be called right before the program exits
-  static void exit_function() {
-    static std::once_flag _exit_function_once_flag;
-    std::call_once(_exit_function_once_flag, real_exit_function);
-
+  /// called on normal program termination
+  static void atexit_function() {
+    // write out logging data from each thread
+    sink::g_sink_manager.flush();
   }
 
-  /// this is where we do the actual clean up work
-  static void real_exit_function() {
-    // TODO: write out profile data from each thread
+  /// normal program termination without completely cleaning resource
+  static void quick_exit_function() {
+    // write out logging data from each thread
+    sink::g_sink_manager.flush();
+  }
+
+  /// called by the C++ runtime when the program cannot continue
+  static void terminate_function() {
+    // write out logging data from each thread
     sink::g_sink_manager.flush();
 
     if (_previous_terminate_handler) {

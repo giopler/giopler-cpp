@@ -39,6 +39,15 @@ include(CTest)
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules;${CMAKE_MODULE_PATH}")
 
 # ------------------------------------------------------------------------------
+# https://cmake.org/cmake/help/latest/module/FindThreads.html
+set (THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads REQUIRED)
+list(APPEND GIOPLER_LIBRARIES Threads::Threads)
+if(NOT Threads_FOUND)
+message(ERROR A threading library is required.)
+endif()
+
+# ------------------------------------------------------------------------------
 # https://cmake.org/cmake/help/latest/module/FindOpenSSL.html
 find_package(OpenSSL REQUIRED COMPONENTS Crypto SSL)
 include_directories(${OPENSSL_INCLUDE_DIR})
@@ -79,6 +88,7 @@ add_executable(simple "${SIMPLE_SOURCE_LIST}")
 #target_include_directories(simple PUBLIC $<BUILD_INTERFACE:${Giopler_SOURCE_DIR}/sample>)
 target_compile_options(simple PRIVATE -Werror -Wall)
 target_link_libraries(simple PRIVATE ${GIOPLER_LIBRARIES})
+target_link_libraries(simple PRIVATE Threads::Threads)
 target_link_libraries(simple PRIVATE m)
 
 # ------------------------------------------------------------------------------
@@ -98,7 +108,7 @@ target_link_libraries(threads PRIVATE ${GIOPLER_LIBRARIES})
 target_link_libraries(threads PRIVATE m)
 
 # ------------------------------------------------------------------------------
-add_compile_definitions(PRIVATE GIOPLER_BUILD_MODE_DEV=1)
+add_compile_definitions(PRIVATE GIOPLER_BUILD_MODE_PROF=1)
 
 # ------------------------------------------------------------------------------
 if(BUILD_TESTING)

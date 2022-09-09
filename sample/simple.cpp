@@ -27,6 +27,7 @@
 
 // -----------------------------------------------------------------------------
 uint64_t factorial(uint64_t n) {
+  giopler::dev::Function function(n);
   return (n <= 1) ? 1 : n * factorial(n-1);
 }
 
@@ -38,5 +39,5 @@ int main()
   giopler::dev::confirm(factorial(5) == 120);
   giopler::dev::confirm(factorial(10) == 3628800);
 
-  giopler::dev::confirm(factorial(3) == 5);
+  giopler::dev::confirm(factorial(3) == 6);
 }

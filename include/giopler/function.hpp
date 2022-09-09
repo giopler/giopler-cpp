@@ -123,12 +123,6 @@ class Function {
   }
 
   ~Function() {
-    if constexpr (g_build_mode == BuildMode::Dev || g_build_mode == BuildMode::Prof) {
-      g_parent_function_name    = _old_parent_function_name;
-      g_function_name           = _old_function_name;
-      _function_object          = _parent_function_object;
-    }
-
     if constexpr (g_build_mode == BuildMode::Dev) {
       std::shared_ptr<Record> record = std::make_shared<Record>(
           create_event_record(*_source_location, "trace"sv, "function_exit"sv));
@@ -137,11 +131,12 @@ class Function {
       std::shared_ptr<Record> record_total = std::make_shared<Record>(
           create_event_record(*_source_location, "profile"sv, "function_total"sv));
       record_total->insert({{"prof.workload", _workload}});   // workload is same for total and self
-      std::shared_ptr<Record> record_self = std::make_shared<Record>(record_total);
+      std::shared_ptr<Record> record_self = std::make_shared<Record>(*record_total);
       (*record_self)["evt.event"s] = "function_self"s;   // insert() does not overwrite
 
       _duration_total  = timestamp_diff(_start_time, now());
       Record event_counters_total{read_event_counters()};
+      Record event_counters_self{event_counters_total};   // merge() is a mutating operation
       subtract_number_record(event_counters_total, *_event_counters_start);
 
       track_child(_duration_total, event_counters_total);
@@ -149,10 +144,16 @@ class Function {
       record_total->insert({{"prof.duration", _duration_total}});
       sink::g_sink_manager.write_record(record_total);
 
-      subtract_number_record(event_counters_total, *_event_counters_children);
-      record_self->merge(*_event_counters_children);
+      subtract_number_record(event_counters_self, *_event_counters_children);
+      record_self->merge(event_counters_self);
       record_self->insert({{"prof.duration", _duration_total-_duration_children}});
       sink::g_sink_manager.write_record(record_self);
+    }
+
+    if constexpr (g_build_mode == BuildMode::Dev || g_build_mode == BuildMode::Prof) {
+      g_parent_function_name    = _old_parent_function_name;
+      g_function_name           = _old_function_name;
+      _function_object          = _parent_function_object;
     }
   }
 
@@ -175,7 +176,7 @@ class Function {
   std::string _old_function_name;
 
   Function* _parent_function_object;
-  static thread_local Function* _function_object;
+  static inline thread_local Function* _function_object;
 
   std::unique_ptr<Record> _event_counters_start;
   std::unique_ptr<Record> _event_counters_children;
