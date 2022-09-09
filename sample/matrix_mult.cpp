@@ -14,8 +14,22 @@
  *   limitations under the License.
  */
 
-#include "gioppler/gioppler.hpp"
+#include "giopler/giopler.hpp"
 
+// -----------------------------------------------------------------------------
+ bool approx_equal_double(const double a, const double b)
+ {
+   static const double DBL_EPSILON = 2.2204460492503131e-16;
+   const double delta = fabs(a - b);
+   if (delta <= DBL_EPSILON)
+     return true;
+   const double relative_error = DBL_EPSILON * fmin(fabs(a), fabs(b));
+   if (delta <= relative_error)
+     return true;
+   return a == b;
+ }
+
+// -----------------------------------------------------------------------------
 // https://en.wikipedia.org/wiki/Matrix_multiplication
 
 // L1d cache:                       192 KiB (6 instances)
@@ -90,7 +104,7 @@ matrix_zeros_double(double* matrix, const size_t rows, const size_t cols) {
 bool
 equal_matrices_double(double* X, double* Y, const size_t elements) {
   for (size_t element = 0; element < elements; ++element) {
-    if (!bg_approx_equal_double(*(X++), *(Y++))) {
+    if (!approx_equal_double(*(X++), *(Y++))) {
       return false;
     }
   }
@@ -108,7 +122,7 @@ alg01_double(double *X,
              const size_t x_cols,
              const size_t y_rows,
              const size_t y_cols) {
-  bg_assert(x_cols == y_rows);
+  assert(x_cols == y_rows);
   const size_t x_cols_y_rows = x_cols;
 
   for (size_t x_row = 0; x_row < x_rows; ++x_row) {
@@ -132,7 +146,7 @@ alg02_double(double *X,
              const size_t x_cols,
              const size_t y_rows,
              const size_t y_cols) {
-  bg_assert(x_cols == y_rows);
+  assert(x_cols == y_rows);
   const size_t x_cols_y_rows = x_cols;
   matrix_zeros_double(R, x_rows, y_cols);
 
@@ -148,42 +162,38 @@ alg02_double(double *X,
 
 // -----------------------------------------------------------------------------
 void matrix_mult_l1_double() {
-  bg_function("l1.double", "", L1_DIM_DOUBLE, {
-    const size_t x_rows = L1_DIM_DOUBLE;
-    const size_t x_cols = L1_DIM_DOUBLE;
-    const size_t y_rows = L1_DIM_DOUBLE;
-    const size_t y_cols = L1_DIM_DOUBLE;
-    bg_assert(x_cols == y_rows);
+  const size_t x_rows = L1_DIM_DOUBLE;
+  const size_t x_cols = L1_DIM_DOUBLE;
+  const size_t y_rows = L1_DIM_DOUBLE;
+  const size_t y_cols = L1_DIM_DOUBLE;
+  assert(x_cols == y_rows);
 
-    double* X = aligned_alloc(CPU_CACHE_LINE_SIZE, x_rows*x_cols*sizeof(double));
-    bg_assert(X);
-    double* Y = aligned_alloc(CPU_CACHE_LINE_SIZE, y_rows*y_cols*sizeof(double));
-    bg_assert(Y);
-    double* R1 = aligned_alloc(CPU_CACHE_LINE_SIZE, x_rows*y_cols*sizeof(double));
-    bg_assert(R1);
-    double* R2 = aligned_alloc(CPU_CACHE_LINE_SIZE, x_rows*y_cols*sizeof(double));
-    bg_assert(R2);
+  double* X = static_cast<double*>(aligned_alloc(CPU_CACHE_LINE_SIZE, x_rows*x_cols*sizeof(double)));
+  assert(X);
+  double* Y = static_cast<double*>(aligned_alloc(CPU_CACHE_LINE_SIZE, y_rows*y_cols*sizeof(double)));
+  assert(Y);
+  double* R1 = static_cast<double*>(aligned_alloc(CPU_CACHE_LINE_SIZE, x_rows*y_cols*sizeof(double)));
+  assert(R1);
+  double* R2 = static_cast<double*>(aligned_alloc(CPU_CACHE_LINE_SIZE, x_rows*y_cols*sizeof(double)));
+  assert(R2);
 
-    matrix_rand_double(X, x_rows, x_cols);
-    matrix_rand_double(Y, y_rows, y_cols);
+  matrix_rand_double(X, x_rows, x_cols);
+  matrix_rand_double(Y, y_rows, y_cols);
 
-    for (int iterations = 0; iterations < NUM_ITERATIONS; ++iterations) {
-      alg01_double(X, Y, R1, x_rows, x_cols, y_rows, y_cols);
-      alg02_double(X, Y, R2, x_rows, x_cols, y_rows, y_cols);
-      bg_assert(equal_matrices_double(R1, R2, x_rows*y_cols));
-    }
+  for (int iterations = 0; iterations < NUM_ITERATIONS; ++iterations) {
+    alg01_double(X, Y, R1, x_rows, x_cols, y_rows, y_cols);
+    alg02_double(X, Y, R2, x_rows, x_cols, y_rows, y_cols);
+    assert(equal_matrices_double(R1, R2, x_rows*y_cols));
+  }
 
-    free(X);
-    free(Y);
-    free(R1);
-    free(R2);
-  });
+  free(X);
+  free(Y);
+  free(R1);
+  free(R2);
 }
 
 // -----------------------------------------------------------------------------
 int main(int argc, const char** argv, const char** envp) {
-  bg_function( "", "", 0, {
-    matrix_mult_l1_double();
-  });
+  matrix_mult_l1_double();
   return 0;
 }

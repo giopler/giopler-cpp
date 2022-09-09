@@ -76,11 +76,11 @@ class ExitFunction {
   }
 
  private:
-  static std::terminate_handler _previous_terminate_handler;
+  static inline std::terminate_handler _previous_terminate_handler;
 };
 
 // -----------------------------------------------------------------------------
-static inline ExitFunction g_exit_function{};
+static inline ExitFunction g_exit_function;
 
 // -----------------------------------------------------------------------------
 }   // namespace gioppler
