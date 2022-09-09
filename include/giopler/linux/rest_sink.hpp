@@ -22,8 +22,8 @@
 //
 
 #pragma once
-#ifndef GIOPPLER_LINUX_REST_SINK_HPP
-#define GIOPPLER_LINUX_REST_SINK_HPP
+#ifndef GIOPLER_LINUX_REST_SINK_HPP
+#define GIOPLER_LINUX_REST_SINK_HPP
 
 #if __cplusplus < 202002L
 #error Support for C++20 or newer is required to use this library.
@@ -63,7 +63,7 @@ std::string compress_json(std::string_view json) {
 #endif
 
 // -----------------------------------------------------------------------------
-namespace gioppler::sink {
+namespace giopler::sink {
 
 // -----------------------------------------------------------------------------
 // there is only one of these objects created per host/path
@@ -260,7 +260,7 @@ class Rest : public Sink
 };
 
 // -----------------------------------------------------------------------------
-}   // namespace gioppler::sink
+}   // namespace giopler::sink
 
 // -----------------------------------------------------------------------------
-#endif // defined GIOPPLER_LINUX_REST_SINK_HPP
+#endif // defined GIOPLER_LINUX_REST_SINK_HPP

@@ -20,8 +20,8 @@
 // SOFTWARE.
 
 #pragma once
-#ifndef GIOPPLER_GIOPPLER_HPP
-#define GIOPPLER_GIOPPLER_HPP
+#ifndef GIOPLER_GIOPLER_HPP
+#define GIOPLER_GIOPLER_HPP
 
 #if __cplusplus < 202002L
 #error Support for C++20 or newer is required to use this library.
@@ -44,4 +44,4 @@
 #include "giopler/exit.hpp"
 
 // -----------------------------------------------------------------------------
-#endif // defined GIOPPLER_GIOPPLER_HPP
+#endif // defined GIOPLER_GIOPLER_HPP

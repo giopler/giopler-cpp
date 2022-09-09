@@ -33,10 +33,10 @@ uint64_t factorial(uint64_t n) {
 // -----------------------------------------------------------------------------
 int main()
 {
-  gioppler::dev::confirm(factorial(0) == 1);
-  gioppler::dev::confirm(factorial(1) == 1);
-  gioppler::dev::confirm(factorial(5) == 120);
-  gioppler::dev::confirm(factorial(10) == 3628800);
+  giopler::dev::confirm(factorial(0) == 1);
+  giopler::dev::confirm(factorial(1) == 1);
+  giopler::dev::confirm(factorial(5) == 120);
+  giopler::dev::confirm(factorial(10) == 3628800);
 
-  gioppler::dev::confirm(factorial(3) == 5);
+  giopler::dev::confirm(factorial(3) == 5);
 }

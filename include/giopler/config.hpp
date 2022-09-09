@@ -35,27 +35,27 @@
 using namespace std::literals;
 
 // -----------------------------------------------------------------------------
-namespace gioppler {
+namespace giopler {
 
 // -----------------------------------------------------------------------------
 // g_build_mode controls the operating mode for the library.
 // Normally this is controlled from the CMake build files.
 // Define one of these constants to manually control the variable.
 enum class BuildMode {Off, Dev, Test, Prof, Qa, Prod};
-#if defined(GIOPPLER_BUILD_MODE_OFF)
+#if defined(GIOPLER_BUILD_MODE_OFF)
 constexpr static inline BuildMode g_build_mode{BuildMode::Off};
-#elif defined(GIOPPLER_BUILD_MODE_DEV)
+#elif defined(GIOPLER_BUILD_MODE_DEV)
 constexpr static inline BuildMode g_build_mode{BuildMode::Dev};
-#elif defined(GIOPPLER_BUILD_MODE_TEST)
+#elif defined(GIOPLER_BUILD_MODE_TEST)
 constexpr static inline BuildMode g_build_mode{BuildMode::Test};
-#elif defined(GIOPPLER_BUILD_MODE_PROF)
+#elif defined(GIOPLER_BUILD_MODE_PROF)
 constexpr static inline BuildMode g_build_mode{BuildMode::Prof};
-#elif defined(GIOPPLER_BUILD_MODE_QA)
+#elif defined(GIOPLER_BUILD_MODE_QA)
 constexpr static inline BuildMode g_build_mode{BuildMode::Qa};
-#elif defined(GIOPPLER_BUILD_MODE_PROD)
+#elif defined(GIOPLER_BUILD_MODE_PROD)
 constexpr static inline BuildMode g_build_mode{BuildMode::Prod};
 #else
-#warning Build mode not defined. Disabling Gioppler library.
+#warning Build mode not defined. Disabling Giopler library.
 constexpr static inline BuildMode g_build_mode{BuildMode::Off};
 #endif
 
@@ -109,14 +109,14 @@ constexpr std::string_view get_compiler_name() {
 // Often used to control include files, so define constants also.
 enum class Platform {Linux, Windows, Bsd};
 #if defined(__linux__) || defined(__ANDROID__)
-#define GIOPPLER_PLATFORM_LINUX 1
+#define GIOPLER_PLATFORM_LINUX 1
 constexpr static inline Platform g_platform = Platform::Linux;
 #elif defined(_WIN32) || defined(_WIN64)
-#define GIOPPLER_PLATFORM_WINDOWS 1
+#define GIOPLER_PLATFORM_WINDOWS 1
 constexpr static inline Platform g_platform = Platform::Windows;
 #elif defined(BSD) || defined(__FreeBSD__) || defined(__NetBSD__) || \
       defined(__OpenBSD__) || defined(__DragonFly__)
-#define GIOPPLER_PLATFORM_BSD 1
+#define GIOPLER_PLATFORM_BSD 1
 constexpr static inline Platform g_platform = Platform::Bsd;
 #else
 #error Operating system platform unsupported.
@@ -146,7 +146,7 @@ constexpr static inline Architecture g_architecture = Architecture::Unknown;
 #endif
 
 // -----------------------------------------------------------------------------
-}   // namespace gioppler
+}   // namespace giopler
 
 // -----------------------------------------------------------------------------
-#endif // defined GIOPPLER_CONFIG_HPP
+#endif // defined GIOPLER_CONFIG_HPP

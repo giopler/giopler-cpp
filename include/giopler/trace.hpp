@@ -20,8 +20,8 @@
 // SOFTWARE.
 
 #pragma once
-#ifndef GIOPPLER_TRACE_HPP
-#define GIOPPLER_TRACE_HPP
+#ifndef GIOPLER_TRACE_HPP
+#define GIOPLER_TRACE_HPP
 
 #if __cplusplus < 202002L
 #error Support for C++20 or newer is required to use this library.
@@ -34,7 +34,7 @@
 #include "giopler/utility.hpp"
 
 // -----------------------------------------------------------------------------
-namespace gioppler::dev
+namespace giopler::dev
 {
 
 // -----------------------------------------------------------------------------
@@ -108,12 +108,12 @@ void set_breakpoint()
 }   // namespace gioppler::dev
 
 // -----------------------------------------------------------------------------
-namespace gioppler::prod
+namespace giopler::prod
 {
 
 // -----------------------------------------------------------------------------
 void branch(const std::string_view message,
-            const source_location& source_location = source_location::current())
+            const giopler::source_location& source_location = giopler::source_location::current())
 {
   if constexpr (g_build_mode == BuildMode::Off) {
     return;
@@ -127,7 +127,7 @@ void branch(const std::string_view message,
 
 // -----------------------------------------------------------------------------
 void branch(StringFunction auto message_function,
-            const source_location& source_location = source_location::current())
+            const giopler::source_location& source_location = giopler::source_location::current())
 {
   if constexpr (g_build_mode == BuildMode::Off) {
     return;
@@ -140,7 +140,7 @@ void branch(StringFunction auto message_function,
 }
 
 // -----------------------------------------------------------------------------
-}   // namespace gioppler::prod
+}   // namespace giopler::prod
 
 // -----------------------------------------------------------------------------
-#endif // defined GIOPPLER_TRACE_HPP
+#endif // defined GIOPLER_TRACE_HPP

@@ -34,7 +34,7 @@
 #include "giopler/utility.hpp"
 
 // -----------------------------------------------------------------------------
-namespace gioppler::dev
+namespace giopler::dev
 {
 
 // -----------------------------------------------------------------------------
@@ -66,10 +66,10 @@ void warning(StringFunction auto message_function,
 }
 
 // -----------------------------------------------------------------------------
-}   // namespace gioppler::dev
+}   // namespace giopler::dev
 
 // -----------------------------------------------------------------------------
-namespace gioppler::prod
+namespace giopler::prod
 {
 
 // -----------------------------------------------------------------------------
@@ -129,7 +129,7 @@ void message(StringFunction auto message_function,
 }
 
 // -----------------------------------------------------------------------------
-}   // namespace gioppler::prod
+}   // namespace giopler::prod
 
 // -----------------------------------------------------------------------------
-#endif // defined GIOPPLER_LOG_HPP
+#endif // defined GIOPLER_LOG_HPP

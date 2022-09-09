@@ -21,8 +21,8 @@
 //
 
 #pragma once
-#ifndef GIOPPLER_RECORD_HPP
-#define GIOPPLER_RECORD_HPP
+#ifndef GIOPLER_RECORD_HPP
+#define GIOPLER_RECORD_HPP
 
 #if __cplusplus < 202002L
 #error Support for C++20 or newer is required to use this library.
@@ -46,7 +46,7 @@ using namespace std::literals;
 #include "giopler/platform.hpp"
 
 // -----------------------------------------------------------------------------
-namespace gioppler {
+namespace giopler {
 
 // -----------------------------------------------------------------------------
 // Data Dictionary:
@@ -220,6 +220,9 @@ class RecordValue
   RecordValue(std::string string_value)   // NOLINT(google-explicit-constructor)
   : _record_value_type(Type::String), _string_value(std::move(string_value)) { }
 
+  RecordValue(const char* string_value)   // NOLINT(google-explicit-constructor)
+  : _record_value_type(Type::String), _string_value(string_value) { }
+
   [[nodiscard]] std::string get_string() const {
     assert(_record_value_type == Type::String);
     return _string_value;
@@ -245,7 +248,7 @@ class RecordValue
   }
 
  private:
-  friend struct std::hash<gioppler::RecordValue>;
+  friend struct std::hash<giopler::RecordValue>;
   Type _record_value_type;
   bool _bool_value{};
   int64_t _integer_value{};
@@ -545,16 +548,16 @@ Record create_event_record(const source_location& source_location,
 }
 
 // -----------------------------------------------------------------------------
-}   // namespace gioppler::sink
+}   // namespace giopler::sink
 
 // -----------------------------------------------------------------------------
 /// hash function for RecordValue
 // defined in std namespace so it is used automatically
 template<>
-struct std::hash<gioppler::RecordValue> {
-  std::size_t operator()(const gioppler::RecordValue& record_value) const {
+struct std::hash<giopler::RecordValue> {
+  std::size_t operator()(const giopler::RecordValue& record_value) const {
     std::size_t seed = 0;
-    gioppler::hash_combine(seed,
+    giopler::hash_combine(seed,
       record_value._record_value_type,
       record_value._bool_value,
       record_value._integer_value,
@@ -569,8 +572,8 @@ struct std::hash<gioppler::RecordValue> {
 /// hash function for Record
 // defined in std namespace so it is used automatically
 template<>
-struct std::hash<gioppler::Record> {
-  std::size_t operator()(const gioppler::Record& record) const {
+struct std::hash<giopler::Record> {
+  std::size_t operator()(const giopler::Record& record) const {
     // sort the entries to ensure consistent hashing
     std::vector<std::string> keys;
     keys.reserve(record.size());
@@ -581,11 +584,11 @@ struct std::hash<gioppler::Record> {
 
     std::size_t seed = 0;
     for (const auto& [key, value] : record) {
-      gioppler::hash_combine(seed, key, value);
+      giopler::hash_combine(seed, key, value);
     }
     return seed;
   }
 };
 
 // -----------------------------------------------------------------------------
-#endif // defined GIOPPLER_RECORD_HPP
+#endif // defined GIOPLER_RECORD_HPP

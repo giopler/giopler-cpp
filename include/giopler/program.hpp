@@ -20,8 +20,8 @@
 // SOFTWARE.
 
 #pragma once
-#ifndef GIOPPLER_PROGRAM_HPP
-#define GIOPPLER_PROGRAM_HPP
+#ifndef GIOPLER_PROGRAM_HPP
+#define GIOPLER_PROGRAM_HPP
 
 #if __cplusplus < 202002L
 #error C++20 or newer support required to use this header-only library.
@@ -31,16 +31,16 @@
 #include <string>
 
 // -----------------------------------------------------------------------------
-namespace gioppler::dev {
+namespace giopler::dev {
 
 // -----------------------------------------------------------------------------
 class Program
 {
  public:
-    Program([[maybe_unused]] gioppler::source_location source_location = gioppler::source_location::current())
+    Program([[maybe_unused]] giopler::source_location source_location = giopler::source_location::current())
     {
       if constexpr (g_build_mode == BuildMode::Dev) {
-        _source_location = std::make_unique<gioppler::source_location>(source_location);
+        _source_location = std::make_unique<giopler::source_location>(source_location);
         std::shared_ptr<Record> record = std::make_shared<Record>(
             create_event_record(source_location, "trace"sv, "program_entry"sv));
         sink::g_sink_manager.write_record(record);
@@ -56,14 +56,14 @@ class Program
     }
 
  private:
-  std::unique_ptr<gioppler::source_location> _source_location;
+  std::unique_ptr<giopler::source_location> _source_location;
 };
 
 // -----------------------------------------------------------------------------
 static inline Program g_program;
 
 // -----------------------------------------------------------------------------
-}   // namespace gioppler::dev
+}   // namespace giopler::dev
 
 // -----------------------------------------------------------------------------
-#endif // defined GIOPPLER_PROGRAM_HPP
+#endif // defined GIOPLER_PROGRAM_HPP

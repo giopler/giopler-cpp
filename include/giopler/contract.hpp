@@ -20,8 +20,8 @@
 // SOFTWARE.
 
 #pragma once
-#ifndef GIOPPLER_CONTRACT_HPP
-#define GIOPPLER_CONTRACT_HPP
+#ifndef GIOPLER_CONTRACT_HPP
+#define GIOPLER_CONTRACT_HPP
 
 #if __cplusplus < 202002L
 #error Support for C++20 or newer is required to use this library.
@@ -40,7 +40,7 @@
 // -----------------------------------------------------------------------------
 /// Contracts to ensure correct program behavior.
 // These print messages to the log and throw exceptions, as needed.
-namespace gioppler
+namespace giopler
 {
 
 // -----------------------------------------------------------------------------
@@ -64,12 +64,12 @@ public:
 };
 
 // -----------------------------------------------------------------------------
-}   // namespace gioppler
+}   // namespace giopler
 
 // -----------------------------------------------------------------------------
 /// Contracts to ensure correct program behavior.
 // These print messages to the log and throw exceptions, as needed.
-namespace gioppler::dev
+namespace giopler::dev
 {
 
 // -----------------------------------------------------------------------------
@@ -84,7 +84,7 @@ void argument(const bool condition,
     return;
   } else if (!condition) [[unlikely]] {
     const std::string message =
-      format("ERROR: {}: invalid argument\n",
+      format("ERROR: {}: invalid argument",
              format_source_location(source_location));
     std::shared_ptr<Record> record = std::make_shared<Record>(
         create_event_record(source_location, "contract", "argument"));
@@ -108,7 +108,7 @@ void expect(const bool condition,
     return;
   } else if (!condition) [[unlikely]] {
     const std::string message =
-      format("ERROR: {}: expect condition failed\n",
+      format("ERROR: {}: expect condition failed",
              format_source_location(source_location));
     std::shared_ptr<Record> record = std::make_shared<Record>(
         create_event_record(source_location, "contract", "expect"));
@@ -131,7 +131,7 @@ void confirm(const bool condition,
     return;
   } else if (!condition) [[unlikely]] {
     const std::string message =
-      format("ERROR: {}: confirm failed\n",
+      format("ERROR: {}: confirm failed",
              format_source_location(source_location));
     std::shared_ptr<Record> record = std::make_shared<Record>(
         create_event_record(source_location, "contract", "confirm"));
@@ -171,7 +171,7 @@ class Invariant {
       return;
     } else if (!_condition_function()) [[unlikely]] {
       const std::string message =
-        format("ERROR: {}: invariant failed on entry\n",
+        format("ERROR: {}: invariant failed on entry",
                format_source_location(_source_location));
       std::shared_ptr<Record> record = std::make_shared<Record>(
           create_event_record(source_location, "contract", "invariant"));
@@ -192,7 +192,7 @@ class Invariant {
     } else if (!_condition_function()) [[unlikely]] {
       try {
         const std::string message =
-          format("ERROR: {}: invariant failed on exit\n",
+          format("ERROR: {}: invariant failed on exit",
                  format_source_location(_source_location));
         std::shared_ptr<Record> record = std::make_shared<Record>(
             create_event_record(_source_location, "contract", "invariant"));
@@ -240,7 +240,7 @@ class Ensure {
     } else if (!_condition_function()) [[unlikely]] {
       try {
         const std::string message =
-          format("ERROR: {}: ensure condition failed on exit\n",
+          format("ERROR: {}: ensure condition failed on exit",
                  format_source_location(_source_location));
         std::shared_ptr<Record> record = std::make_shared<Record>(
             create_event_record(_source_location, "contract", "ensure"));
@@ -274,10 +274,10 @@ class Ensure {
 #endif
 
 // -----------------------------------------------------------------------------
-}   // namespace gioppler::dev
+}   // namespace giopler::dev
 
 // -----------------------------------------------------------------------------
-namespace gioppler::prod
+namespace giopler::prod
 {
 
 // -----------------------------------------------------------------------------
@@ -292,7 +292,7 @@ void certify(const bool condition,
     return;
   } else if (!condition) [[unlikely]] {
     const std::string message =
-      format("ERROR: {}: invalid argument\n",
+      format("ERROR: {}: invalid argument",
              format_source_location(source_location));
     std::shared_ptr<Record> record = std::make_shared<Record>(
         create_event_record(source_location, "contract", "certify"));
@@ -305,7 +305,7 @@ void certify(const bool condition,
 }
 
 // -----------------------------------------------------------------------------
-}   // namespace gioppler::prod
+}   // namespace giopler::prod
 
 // -----------------------------------------------------------------------------
-#endif // defined GIOPPLER_CONTRACT_HPP
+#endif // defined GIOPLER_CONTRACT_HPP

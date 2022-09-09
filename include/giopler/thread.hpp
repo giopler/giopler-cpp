@@ -20,8 +20,8 @@
 // SOFTWARE.
 
 #pragma once
-#ifndef GIOPPLER_THREAD_HPP
-#define GIOPPLER_THREAD_HPP
+#ifndef GIOPLER_THREAD_HPP
+#define GIOPLER_THREAD_HPP
 
 #if __cplusplus < 202002L
 #error C++20 or newer support required to use this header-only library.
@@ -31,16 +31,16 @@
 #include <string>
 
 // -----------------------------------------------------------------------------
-namespace gioppler::dev {
+namespace giopler::dev {
 
 // -----------------------------------------------------------------------------
 class Thread
 {
  public:
-    Thread([[maybe_unused]] gioppler::source_location source_location = gioppler::source_location::current())
+    Thread([[maybe_unused]] giopler::source_location source_location = giopler::source_location::current())
     {
       if constexpr (g_build_mode == BuildMode::Dev) {
-        _source_location = std::make_unique<gioppler::source_location>(source_location);
+        _source_location = std::make_unique<giopler::source_location>(source_location);
         std::shared_ptr<Record> record = std::make_shared<Record>(
             create_event_record(source_location, "trace"sv, "thread_entry"sv));
         sink::g_sink_manager.write_record(record);
@@ -56,14 +56,14 @@ class Thread
     }
 
  private:
-  std::unique_ptr<gioppler::source_location> _source_location;
+  std::unique_ptr<giopler::source_location> _source_location;
 };
 
 // -----------------------------------------------------------------------------
 static inline thread_local Thread g_thread;
 
 // -----------------------------------------------------------------------------
-}   // namespace gioppler::dev
+}   // namespace giopler::dev
 
 // -----------------------------------------------------------------------------
-#endif // defined GIOPPLER_THREAD_HPP
+#endif // defined GIOPLER_THREAD_HPP

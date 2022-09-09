@@ -20,8 +20,8 @@
 // SOFTWARE.
 
 #pragma once
-#ifndef GIOPPLER_SINK_HPP
-#define GIOPPLER_SINK_HPP
+#ifndef GIOPLER_SINK_HPP
+#define GIOPLER_SINK_HPP
 
 #if __cplusplus < 202002L
 #error Support for C++20 or newer is required to use this library.
@@ -50,7 +50,7 @@ using namespace std::chrono_literals;
 #include "giopler/record.hpp"
 
 // -----------------------------------------------------------------------------
-namespace gioppler::sink {
+namespace giopler::sink {
 
 // the C++ standard library is not guaranteed to be thread safe
 // file i/o operations are thread-safe on Windows and on POSIX systems
@@ -318,15 +318,15 @@ class Csv : public Sink {
 };
 
 // -----------------------------------------------------------------------------
-}   // namespace gioppler::sink
+}   // namespace giopler::sink
 
 // -----------------------------------------------------------------------------
-#if defined(GIOPPLER_PLATFORM_LINUX)
+#if defined(GIOPLER_PLATFORM_LINUX)
 #include "giopler/linux/rest_sink.hpp"
 #endif
 
 // -----------------------------------------------------------------------------
-namespace gioppler::sink {
+namespace giopler::sink {
 
 // -----------------------------------------------------------------------------
 /// Create default sinks if write attempted and no sinks defined already
@@ -345,7 +345,7 @@ void SinkManager::create_sinks() {
 }
 
 // -----------------------------------------------------------------------------
-}   // namespace gioppler::sink
+}   // namespace giopler::sink
 
 // -----------------------------------------------------------------------------
-#endif // defined GIOPPLER_SINK_HPP
+#endif // defined GIOPLER_SINK_HPP

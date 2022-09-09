@@ -20,8 +20,8 @@
 // SOFTWARE.
 
 #pragma once
-#ifndef GIOPPLER_EXIT_HPP
-#define GIOPPLER_EXIT_HPP
+#ifndef GIOPLER_EXIT_HPP
+#define GIOPLER_EXIT_HPP
 
 #if __cplusplus < 202002L
 #error Support for C++20 or newer is required to use this library.
@@ -34,7 +34,7 @@
 #include "giopler/sink.hpp"
 
 // -----------------------------------------------------------------------------
-namespace gioppler
+namespace giopler
 {
 
 // -----------------------------------------------------------------------------
@@ -83,7 +83,7 @@ class ExitFunction {
 static inline ExitFunction g_exit_function;
 
 // -----------------------------------------------------------------------------
-}   // namespace gioppler
+}   // namespace giopler
 
 // -----------------------------------------------------------------------------
-#endif // defined GIOPPLER_EXIT_HPP
+#endif // defined GIOPLER_EXIT_HPP

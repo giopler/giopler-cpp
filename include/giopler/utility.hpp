@@ -20,8 +20,8 @@
 // SOFTWARE.
 
 #pragma once
-#ifndef GIOPPLER_UTILITY_HPP
-#define GIOPPLER_UTILITY_HPP
+#ifndef GIOPLER_UTILITY_HPP
+#define GIOPLER_UTILITY_HPP
 
 #if __cplusplus < 202002L
 #error Support for C++20 or newer is required to use this library.
@@ -63,16 +63,16 @@ template <typename... T>
 // https://github.com/fmtlib/fmt
 #define FMT_HEADER_ONLY 1
 #include <fmt/chrono.h>
-namespace gioppler {
+namespace giopler {
 template <typename... T>
 [[nodiscard]] std::string format(std::string_view fmt, T&&... args) {
   return fmt::vformat(fmt, fmt::make_format_args(args...));
 }
-}   // namespace gioppler
+}   // namespace giopler
 #endif
 
 // -----------------------------------------------------------------------------
-namespace gioppler {
+namespace giopler {
 
 // -----------------------------------------------------------------------------
 /// used to combine multiple hash values
@@ -349,14 +349,14 @@ concept StringFunction = requires (F f) {
 };
 
 // -----------------------------------------------------------------------------
-}   // namespace gioppler
+}   // namespace giopler
 
 // -----------------------------------------------------------------------------
 template<>
-struct std::hash<gioppler::Timestamp> {
-  std::size_t operator()(const gioppler::Timestamp& timestamp) const {
+struct std::hash<giopler::Timestamp> {
+  std::size_t operator()(const giopler::Timestamp& timestamp) const {
     std::hash<std::uint64_t> hash;
-    const std::uint64_t timestamp_ns = gioppler::to_nanoseconds(timestamp);
+    const std::uint64_t timestamp_ns = giopler::to_nanoseconds(timestamp);
     return hash(timestamp_ns);
   }
 };
@@ -367,10 +367,10 @@ template<class T1, class T2>
 struct std::hash<std::pair<T1, T2>> {
   std::size_t operator()(const std::pair<T1, T2>& pair) const {
     std::size_t seed = 0;
-    gioppler::hash_combine(seed, pair.first, pair.second);
+    giopler::hash_combine(seed, pair.first, pair.second);
     return seed;
   }
 };
 
 // -----------------------------------------------------------------------------
-#endif // defined GIOPPLER_UTILITY_HPP
+#endif // defined GIOPLER_UTILITY_HPP

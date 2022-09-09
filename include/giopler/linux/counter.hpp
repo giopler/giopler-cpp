@@ -21,8 +21,8 @@
 //
 
 #pragma once
-#ifndef GIOPPLER_LINUX_COUNTER_HPP
-#define GIOPPLER_LINUX_COUNTER_HPP
+#ifndef GIOPLER_LINUX_COUNTER_HPP
+#define GIOPLER_LINUX_COUNTER_HPP
 
 #if __cplusplus < 202002L
 #error Support for C++20 or newer is required to use this library.
@@ -39,7 +39,7 @@
 #include <unistd.h>
 
 // -----------------------------------------------------------------------------
-namespace gioppler::dev
+namespace giopler::dev
 {
 
 // -----------------------------------------------------------------------------
@@ -368,7 +368,7 @@ Record read_event_counters() {
 }
 
 // -----------------------------------------------------------------------------
-} // namespace gioppler::linux
+} // namespace giopler::linux
 
 // -----------------------------------------------------------------------------
-#endif // defined GIOPPLER_LINUX_COUNTER_HPP
+#endif // defined GIOPLER_LINUX_COUNTER_HPP

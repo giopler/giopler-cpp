@@ -31,12 +31,12 @@
 #include <string>
 
 // -----------------------------------------------------------------------------
-#if defined(GIOPPLER_PLATFORM_LINUX)
+#if defined(GIOPLER_PLATFORM_LINUX)
 #include "giopler/linux/counter.hpp"
 #endif
 
 // -----------------------------------------------------------------------------
-namespace gioppler::dev {
+namespace giopler::dev {
 
 // -----------------------------------------------------------------------------
 /// target += other
@@ -95,14 +95,14 @@ void subtract_number_record(Record& target, const Record& other) {
 class Function {
  public:
   explicit Function([[maybe_unused]] const double workload = 0,
-                    [[maybe_unused]] gioppler::source_location source_location = gioppler::source_location::current())
+                    [[maybe_unused]] giopler::source_location source_location = giopler::source_location::current())
     : _workload{workload},
       _duration_total{},
       _duration_children{}
   {
     if constexpr (g_build_mode == BuildMode::Dev || g_build_mode == BuildMode::Prof) {
       _start_time               = now();
-      _source_location          = std::make_unique<gioppler::source_location>(source_location);
+      _source_location          = std::make_unique<giopler::source_location>(source_location);
       _old_parent_function_name = g_parent_function_name;
       _old_function_name        = g_function_name;
       g_parent_function_name    = g_function_name;
@@ -170,7 +170,7 @@ class Function {
   double _duration_children;
 
   // use shared pointers to minimize their cost if build mode disables the class
-  std::unique_ptr<gioppler::source_location> _source_location;
+  std::unique_ptr<giopler::source_location> _source_location;
   std::string _old_parent_function_name;
   std::string _old_function_name;
 
@@ -182,7 +182,7 @@ class Function {
 };
 
 // -----------------------------------------------------------------------------
-}   // namespace gioppler::dev
+}   // namespace giopler::dev
 
 // -----------------------------------------------------------------------------
-#endif // defined GIOPPLER_PROFILE_HPP
+#endif // defined GIOPLER_PROFILE_HPP

@@ -20,8 +20,8 @@
 // SOFTWARE.
 
 #pragma once
-#ifndef GIOPPLER_PLATFORM_HPP
-#define GIOPPLER_PLATFORM_HPP
+#ifndef GIOPLER_PLATFORM_HPP
+#define GIOPLER_PLATFORM_HPP
 
 #if __cplusplus < 202002L
 #error Support for C++20 or newer is required to use this library.
@@ -33,7 +33,7 @@
 #include "giopler/config.hpp"
 
 // -----------------------------------------------------------------------------
-namespace gioppler {
+namespace giopler {
 // these values are assumed to be constant for the duration of the program execution
 extern uint64_t get_memory_page_size();
 extern uint64_t get_physical_memory();
@@ -50,12 +50,12 @@ extern uint64_t get_thread_id();
 extern uint64_t get_node_id();
 extern uint64_t get_cpu_id();
 extern uint64_t get_available_memory();
-}   // namespace gioppler
+}   // namespace giopler
 
 // -----------------------------------------------------------------------------
-#if defined(GIOPPLER_PLATFORM_LINUX)
+#if defined(GIOPLER_PLATFORM_LINUX)
 #include "giopler/linux/platform.hpp"
 #endif
 
 // -----------------------------------------------------------------------------
-#endif // defined GIOPPLER_PLATFORM_HPP
+#endif // defined GIOPLER_PLATFORM_HPP
