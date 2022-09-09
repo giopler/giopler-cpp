@@ -86,11 +86,11 @@ namespace giopler {
 // - val.message                  - string    - additional event details
 // - prof.count                   - integer   - number of times the function or block was executed  ********************
 
-// - prof.workload                - real      - user-assigned weight to profiled function calls
+// - prof.workload                - real      - user-assigned weight to profiled function calls (same for total and self)
 
 // All of these have two versions:
-// - *.total                      - sum of the function and other functions it calls
-// - *.self                       - sum of only the function, excluding other functions called
+// - function_total               - sum of the function and other functions it calls
+// - function_self                - sum of only the function, excluding other functions called
 
 // - prof.duration                - real      - real (wall clock) duration (secs)
 
@@ -310,7 +310,7 @@ const RecordCatalog& get_record_catalog() {
 
       {"prof.count"s,                         {RecordValue::Type::Integer,    "prof.all"s, 1}},
       {"prof.workload"s,                      {RecordValue::Type::Real,       "prof.all"s, 1}},
-      {"prof.duration"s,                      {RecordValue::Type::Integer,    "prof.all"s, ns_to_sec}},
+      {"prof.duration"s,                      {RecordValue::Type::Real,       "prof.all"s, ns_to_sec}},
 
       {"prof.sw.cpu_clock"s,                  {RecordValue::Type::Integer,    "prof.linux.sw"s, ns_to_sec}},
       {"prof.sw.task_clock"s,                 {RecordValue::Type::Integer,    "prof.linux.sw"s, ns_to_sec}},
