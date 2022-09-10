@@ -52,6 +52,7 @@ namespace giopler {
 // Data Dictionary:
 
 // these values are constant for the duration of the program run
+// - prog.run_id                  - string    - generated at client; unique to program run (UUID)
 // - prog.memory_page_size        - integer   - memory page size (bytes)
 // - prog.physical_memory         - integer   - physical memory size (bytes)
 // - prog.total_cpu_cores         - integer   - total number of CPU cores
@@ -66,6 +67,7 @@ namespace giopler {
 // - prog.effective_username      - string    - username that the process is running under
 
 // these values could change as the program runs
+// - evt.type                     - string    - program, trace, message, profile
 // - evt.event_category           - string    - contract, dev, prof, test, prod
 // - evt.event                    - string    - uniquely identifies the event
 // - attr.*                       - any       - user-defined attributes
@@ -284,6 +286,7 @@ using RecordInit = std::initializer_list<Record::value_type>;
 /// catalog of all valid Record keys
 const RecordCatalog& get_record_catalog() {
   static const RecordCatalog record_catalog{
+      {"prog.run_id"s,                        {RecordValue::Type::String,     "prog"s, 1}},
       {"prog.memory_page_size"s,              {RecordValue::Type::Integer,    "prog"s, 1}},
       {"prog.physical_memory"s,               {RecordValue::Type::Integer,    "prog"s, 1}},
       {"prog.total_cpu_cores"s,               {RecordValue::Type::Integer,    "prog"s, 1}},
@@ -312,8 +315,8 @@ const RecordCatalog& get_record_catalog() {
       {"prof.workload"s,                      {RecordValue::Type::Real,       "prof.all"s, 1}},
       {"prof.duration"s,                      {RecordValue::Type::Real,       "prof.all"s, ns_to_sec}},
 
-      {"prof.sw.cpu_clock"s,                  {RecordValue::Type::Integer,    "prof.linux.sw"s, ns_to_sec}},
-      {"prof.sw.task_clock"s,                 {RecordValue::Type::Integer,    "prof.linux.sw"s, ns_to_sec}},
+      {"prof.sw.cpu_clock"s,                  {RecordValue::Type::Real,       "prof.linux.sw"s, ns_to_sec}},
+      {"prof.sw.task_clock"s,                 {RecordValue::Type::Real,       "prof.linux.sw"s, ns_to_sec}},
       {"prof.sw.page_faults"s,                {RecordValue::Type::Integer,    "prof.linux.sw"s, 1}},
       {"prof.sw.context_switches"s,           {RecordValue::Type::Integer,    "prof.linux.sw"s, 1}},
       {"prof.sw.cpu_migrations"s,             {RecordValue::Type::Integer,    "prof.linux.sw"s, 1}},

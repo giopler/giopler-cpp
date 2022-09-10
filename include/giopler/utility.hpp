@@ -303,31 +303,38 @@ std::string get_uuid()
     static thread_local std::random_device                    rd;
     static thread_local std::default_random_engine            gen(rd());
     static thread_local std::uniform_int_distribution<> hex_digit(0, 15);
-    static thread_local std::uniform_int_distribution<>    variant(8, 11);
+    static thread_local std::uniform_int_distribution<>   variant(8, 11);
 
     std::stringstream ss;
     ss << std::hex;
-    for (int i = 0; i < 8; i++) {
+    for (uint_fast8_t i = 0; i < 8; ++i) {
         ss << hex_digit(gen);
     }
     ss << "-";
-    for (int i = 0; i < 4; i++) {
+    for (uint_fast8_t i = 0; i < 4; ++i) {
         ss << hex_digit(gen);
     }
     ss << "-4";
-    for (int i = 0; i < 3; i++) {
+    for (uint_fast8_t i = 0; i < 3; ++i) {
         ss << hex_digit(gen);
     }
     ss << "-";
     ss << variant(gen);
-    for (int i = 0; i < 3; i++) {
+    for (uint_fast8_t i = 0; i < 3; ++i) {
         ss << hex_digit(gen);
     }
     ss << "-";
-    for (int i = 0; i < 12; i++) {
+    for (uint_fast8_t i = 0; i < 12; ++i) {
         ss << hex_digit(gen);
     };
     return ss.str();
+}
+
+// -----------------------------------------------------------------------------
+/// returns the unique UUID for the program run
+std::string_view get_run_id() {
+  const static std::string run_id{get_uuid()};
+  return run_id;
 }
 
 // -----------------------------------------------------------------------------

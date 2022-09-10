@@ -96,27 +96,6 @@ class Rest : public Sink
   }
 
  protected:
-  /// perform a HTTP POST of a JSON payload
-  // example path: "/software/htp/cics/index.html"
-  // https://reqbin.com/Article/HttpPost
-  // https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods/POST
-  // returns the JSON content if HTTP result status code >= 200 and < 300
-  // https://wiki.openssl.org/index.php/Library_Initialization
-  // https://wiki.openssl.org/index.php/SSL/TLS_Client
-  std::string_view post(std::string_view path, std::string_view json_content) {
-    if (SSL_get_shutdown(_ssl) == SSL_RECEIVED_SHUTDOWN) {
-        close_connection();
-        open_connection();
-    }
-
-    send_request("POST", std::string{path}, json_content);
-    read_response();
-    parse_response_status();
-    assert(_response_status == 200);
-    parse_response_contents();
-    return _result_contents;
-  }
-
   /// post the record to the server
   // a thread gets created for each record we are trying to write
   // there is only one Rest sink object created
@@ -195,6 +174,27 @@ class Rest : public Sink
       const int bio_conn_status = BIO_do_connect(_bio);
       ERR_print_errors(_bio);
       assert(bio_conn_status == 1);
+  }
+
+  /// perform a HTTP POST of a JSON payload
+  // example path: "/software/htp/cics/index.html"
+  // https://reqbin.com/Article/HttpPost
+  // https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods/POST
+  // returns the JSON content if HTTP result status code >= 200 and < 300
+  // https://wiki.openssl.org/index.php/Library_Initialization
+  // https://wiki.openssl.org/index.php/SSL/TLS_Client
+  std::string_view post(std::string_view path, std::string_view json_content) {
+    if (SSL_get_shutdown(_ssl) == SSL_RECEIVED_SHUTDOWN) {
+        close_connection();
+        open_connection();
+    }
+
+    send_request("POST", std::string{path}, json_content);
+    read_response();
+    parse_response_status();
+    assert(_response_status == 200);
+    parse_response_contents();
+    return _result_contents;
   }
 
   void send_request(std::string http_method, std::string path, std::string_view json_content) {

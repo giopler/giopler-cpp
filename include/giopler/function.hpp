@@ -29,67 +29,10 @@
 
 #include <memory>
 #include <string>
-
-// -----------------------------------------------------------------------------
-#if defined(GIOPLER_PLATFORM_LINUX)
-#include "giopler/linux/counter.hpp"
-#endif
+#include "giopler/counter.hpp"
 
 // -----------------------------------------------------------------------------
 namespace giopler::dev {
-
-// -----------------------------------------------------------------------------
-/// target += other
-// assumes all entries are numeric (Integer or Real)
-// assumes the 'other' Record contains all key values
-void add_number_record(Record& target, const Record& other) {
-  for (const auto& [key, value] : other) {
-    if (value.get_type() == RecordValue::Type::Integer) {
-      if (!target.contains(key)) {
-        target.insert({key, 0});
-      }
-      target.at(key) = target.at(key).get_integer() + value.get_integer();
-    } else if (value.get_type() == RecordValue::Type::Real) {
-      if (!target.contains(key)) {
-        target.insert({key, 0.0});
-      }
-      target.at(key) = target.at(key).get_real() + value.get_real();
-    } else {
-      assert(false);
-    }
-  }
-}
-
-// -----------------------------------------------------------------------------
-/// target -= other
-// assumes all entries are numeric (Integer or Real)
-// assumes the 'other' Record contains all key values
-// clamps values at zero - does not go negative
-void subtract_number_record(Record& target, const Record& other) {
-  for (const auto& [key, value] : other) {
-    if (value.get_type() == RecordValue::Type::Integer) {
-      if (!target.contains(key)) {
-        target.insert({key, 0});
-      }
-      if (target.at(key).get_integer() <= value.get_integer()) {
-        target.at(key) = 0;
-      } else {
-        target.at(key) = target.at(key).get_integer() - value.get_integer();
-      }
-    } else if (value.get_type() == RecordValue::Type::Real) {
-      if (!target.contains(key)) {
-        target.insert({key, 0.0});
-      }
-      if (target.at(key).get_real() <= value.get_real()) {
-        target.at(key) = 0.0;
-      } else {
-        target.at(key) = target.at(key).get_real() - value.get_real();
-      }
-    } else {
-      assert(false);
-    }
-  }
-}
 
 // -----------------------------------------------------------------------------
 class Function {
