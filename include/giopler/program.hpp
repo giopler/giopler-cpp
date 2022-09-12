@@ -39,6 +39,13 @@ class Program
  public:
     Program([[maybe_unused]] giopler::source_location source_location = giopler::source_location::current())
     {
+      if constexpr (g_build_mode != BuildMode::Off) {
+        std::shared_ptr<Record> record = std::make_shared<Record>(
+            create_event_record(source_location, "all"sv, "program_info"sv));
+        record->merge(read_program_info());
+        sink::g_sink_manager.write_record(record);
+      }
+
       if constexpr (g_build_mode == BuildMode::Dev) {
         _source_location = std::make_unique<giopler::source_location>(source_location);
         std::shared_ptr<Record> record = std::make_shared<Record>(

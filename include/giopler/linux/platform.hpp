@@ -167,6 +167,33 @@ uint64_t get_process_id()
 #endif   // defined GIOPLER_PLATFORM_LINUX
 
 // -----------------------------------------------------------------------------
+/// CPU Architecture
+// x86_64, i686, i386, aarch64, arm
+// https://stackoverflow.com/questions/45125516/possible-values-for-uname-m
+#if defined(GIOPLER_PLATFORM_LINUX)      // Linux kernel; could be GNU or Android
+#include <sys/utsname.h>
+namespace giopler {
+std::string get_architecture()
+{
+  struct utsname uts_name{};
+  const int status = uname(&uts_name);
+  if (status == 0) {
+    return uts_name.machine;
+  } else {
+    return ""s;
+  }
+}
+}   // namespace giopler
+#else
+namespace giopler {
+std::string get_architecture()
+{
+  return ""s;
+}
+}   // namespace giopler
+#endif   // defined GIOPLER_PLATFORM_LINUX
+
+// -----------------------------------------------------------------------------
 /// Real username
 #if defined(GIOPLER_PLATFORM_LINUX)      // Linux kernel; could be GNU or Android
 #include <unistd.h>
@@ -214,33 +241,6 @@ std::string get_effective_username()
 #else
 namespace giopler {
 std::string get_effective_username()
-{
-  return ""s;
-}
-}   // namespace giopler
-#endif   // defined GIOPLER_PLATFORM_LINUX
-
-// -----------------------------------------------------------------------------
-/// CPU Architecture
-// x86_64, i686, i386, aarch64, arm
-// https://stackoverflow.com/questions/45125516/possible-values-for-uname-m
-#if defined(GIOPLER_PLATFORM_LINUX)      // Linux kernel; could be GNU or Android
-#include <sys/utsname.h>
-namespace giopler {
-std::string get_architecture()
-{
-  struct utsname uts_name{};
-  const int status = uname(&uts_name);
-  if (status == 0) {
-    return uts_name.machine;
-  } else {
-    return ""s;
-  }
-}
-}   // namespace giopler
-#else
-namespace giopler {
-std::string get_architecture()
 {
   return ""s;
 }

@@ -259,8 +259,8 @@ class Csv : public Sink {
       }
 
       switch (value.get_type()) {
-        case RecordValue::Type::Bool: {
-          buffer << format("{}", value.get_bool());
+        case RecordValue::Type::Boolean: {
+          buffer << format("{}", value.get_boolean());
           break;
         }
 

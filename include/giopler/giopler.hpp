@@ -33,6 +33,7 @@
 #include "giopler/utility.hpp"
 #include "giopler/record.hpp"
 #include "giopler/sink.hpp"
+#include "giopler/exit.hpp"
 
 #include "giopler/contract.hpp"
 #include "giopler/trace.hpp"
@@ -42,7 +43,6 @@
 #include "giopler/program.hpp"
 #include "giopler/thread.hpp"
 #include "giopler/function.hpp"
-#include "giopler/exit.hpp"
 
 // -----------------------------------------------------------------------------
 #endif // defined GIOPLER_GIOPLER_HPP

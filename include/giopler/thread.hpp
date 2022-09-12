@@ -29,6 +29,7 @@
 
 #include <memory>
 #include <string>
+#include "giopler/counter.hpp"
 
 // -----------------------------------------------------------------------------
 namespace giopler::dev {
@@ -44,6 +45,10 @@ class Thread
         std::shared_ptr<Record> record = std::make_shared<Record>(
             create_event_record(source_location, "trace"sv, "thread_entry"sv));
         sink::g_sink_manager.write_record(record);
+      } else if constexpr (g_build_mode == BuildMode::Prof) {
+        _start_time           = now();
+        _event_counters_start = std::make_unique<Record>(read_event_counters());
+        _source_location      = std::make_unique<giopler::source_location>(source_location);
       }
     }
 
@@ -52,14 +57,30 @@ class Thread
         std::shared_ptr<Record> record = std::make_shared<Record>(
             create_event_record(*_source_location, "trace"sv, "thread_exit"sv));
         sink::g_sink_manager.write_record(record);
+      } else if constexpr (g_build_mode == BuildMode::Prof) {
+        std::shared_ptr<Record> record_total = std::make_shared<Record>(
+            create_event_record(*_source_location, "profile"sv, "thread"sv));
+
+        const double _duration_total = timestamp_diff(_start_time, now());
+        Record event_counters_total{read_event_counters()};
+        subtract_number_record(event_counters_total, *_event_counters_start);
+
+        record_total->merge(event_counters_total);
+        record_total->insert({{"prof.duration", _duration_total}});
+        sink::g_sink_manager.write_record(record_total);
       }
     }
 
  private:
+  Timestamp _start_time;
+  std::unique_ptr<Record> _event_counters_start;
   std::unique_ptr<giopler::source_location> _source_location;
 };
 
 // -----------------------------------------------------------------------------
+/// keep track of the lifetime of each thread for logging purposes
+// depends on the counters declared static inline in linux/counters.hpp
+// static initialization order fiasco does not apply when the variables are also inline
 static inline thread_local Thread g_thread;
 
 // -----------------------------------------------------------------------------

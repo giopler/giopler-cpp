@@ -81,6 +81,7 @@ class Rest : public Sink
     _port{port}
   {
     _fields = get_sorted_record_keys();
+    _json_web_token = std::getenv("GIOPLER_TOKEN");
     open_connection();
   }
 
@@ -107,7 +108,8 @@ class Rest : public Sink
     }
 
     const std::lock_guard<std::mutex> lock{_mutex};
-    post(SERVER_PATH, record_to_json(_fields, record));
+    const std::string path{std::string{SERVER_PATH} + record->at("evt.record_type").get_string()};
+    post(path, record_to_json(_fields, record));
     return true;   // record was not filtered and it was written out
   }
 
@@ -115,7 +117,7 @@ class Rest : public Sink
 
  private:
   constexpr static inline std::string_view SERVER_HOST{"localhost"sv};
-  constexpr static inline std::string_view SERVER_PATH{"/api/v1/log_event"sv};
+  constexpr static inline std::string_view SERVER_PATH{"/api/v1/"sv};
   constexpr static inline std::string_view SERVER_PORT{"8100"sv};
   std::mutex _mutex;
   std::vector<std::string> _fields;

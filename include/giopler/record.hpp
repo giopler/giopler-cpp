@@ -67,7 +67,7 @@ namespace giopler {
 // - prog.effective_username      - string    - username that the process is running under
 
 // these values could change as the program runs
-// - evt.type                     - string    - program, trace, message, profile
+// - evt.record_type              - string    - program, trace, message, profile
 // - evt.event_category           - string    - contract, dev, prof, test, prod
 // - evt.event                    - string    - uniquely identifies the event
 // - attr.*                       - any       - user-defined attributes
@@ -132,7 +132,7 @@ namespace giopler {
 class RecordValue
 {
  public:
-  enum class Type {Empty, Bool, Integer, Real, String, Timestamp};
+  enum class Type {Empty, Boolean, Integer, Real, String, Timestamp};
 
   [[nodiscard]] Type get_type() const {
     return _record_value_type;
@@ -153,7 +153,7 @@ class RecordValue
     if (_record_value_type == record_value._record_value_type) {
       switch (_record_value_type) {
         case Type::Empty:       return true;
-        case Type::Bool:        return _bool_value      == record_value._bool_value;
+        case Type::Boolean:     return _boolean_value   == record_value._boolean_value;
         case Type::Integer:     return _integer_value   == record_value._integer_value;
         case Type::Real:        return _real_value      == record_value._real_value;
         case Type::String:      return _string_value    == record_value._string_value;
@@ -165,17 +165,17 @@ class RecordValue
   }
 
   // ---------------------------------------------------------------------------
-  RecordValue(const bool bool_value)   // NOLINT(google-explicit-constructor)
-  : _record_value_type(Type::Bool), _bool_value(bool_value) { }
+  RecordValue(const bool boolean_value)   // NOLINT(google-explicit-constructor)
+  : _record_value_type(Type::Boolean), _boolean_value(boolean_value) { }
 
-  [[nodiscard]] bool get_bool() const {
-    assert(_record_value_type == Type::Bool);
-    return _bool_value;
+  [[nodiscard]] bool get_boolean() const {
+    assert(_record_value_type == Type::Boolean);
+    return _boolean_value;
   }
 
-  void set_bool(const bool bool_value) {
-    assert(_record_value_type == Type::Bool);
-    _bool_value = bool_value;
+  void set_boolean(const bool boolean_value) {
+    assert(_record_value_type == Type::Boolean);
+    _boolean_value = boolean_value;
   }
 
   // ---------------------------------------------------------------------------
@@ -252,7 +252,7 @@ class RecordValue
  private:
   friend struct std::hash<giopler::RecordValue>;
   Type _record_value_type;
-  bool _bool_value{};
+  bool _boolean_value{};
   int64_t _integer_value{};
   double _real_value{};
   std::string _string_value{};
@@ -295,6 +295,7 @@ const RecordCatalog& get_record_catalog() {
       {"prog.process_id"s,                    {RecordValue::Type::Integer,    "prog"s, 1}},
       {"prog.build_mode"s,                    {RecordValue::Type::String,     "prog"s, 1}},
 
+      {"evt.record_type"s,                    {RecordValue::Type::String,     "evt"s, 1}},
       {"evt.event_category"s,                 {RecordValue::Type::String,     "evt"s, 1}},
       {"evt.event"s,                          {RecordValue::Type::String,     "evt"s, 1}},
 
@@ -435,8 +436,8 @@ std::string record_to_json(const std::vector<std::string>& fields, std::shared_p
       }
 
       switch (value.get_type()) {
-        case RecordValue::Type::Bool: {
-          buffer << format("\"{}\":{}", field, value.get_bool());
+        case RecordValue::Type::Boolean: {
+          buffer << format("\"{}\":{}", field, value.get_boolean());
           break;
         }
 
@@ -511,6 +512,7 @@ Record create_event_record(const source_location& source_location,
                            std::string_view event)
 {
   Record record{
+      {"evt.record_type"s,        "event"sv},
       {"evt.event_category"s,     event_category},
       {"evt.event"s,              event},
 
@@ -533,6 +535,30 @@ Record create_event_record(const source_location& source_location,
 }
 
 // -----------------------------------------------------------------------------
+/// read program-wide variables
+// these values are constant per program run
+Record read_program_info() {
+  Record record{
+      {"evt.record_type"s,          "program"sv},
+      {"prog.start_ts"s,            now()},
+      {"prog.run_id"s,              get_run_id()},
+      {"prog.memory_page_size"s,    get_memory_page_size()},
+      {"prog.physical_memory"s,     get_physical_memory()},
+      {"prog.total_cpu_cores"s,     get_total_cpu_cores()},
+      {"prog.available_cpu_cores"s, get_available_cpu_cores()},
+      {"prog.program_name"s,        get_program_name()},
+      {"prog.process_id"s,          get_process_id()},
+      {"prog.build_mode"s,          get_build_mode_name()},
+      {"prog.compiler"s,            get_compiler_name()},
+      {"prog.platform"s,            get_platform_name()},
+      {"prog.architecture"s,        get_architecture()},
+      {"prog.real_username"s,       get_real_username()},
+      {"prog.effective_username"s,  get_effective_username()}
+  };
+  return record;
+}
+
+// -----------------------------------------------------------------------------
 }   // namespace giopler::sink
 
 // -----------------------------------------------------------------------------
@@ -544,7 +570,7 @@ struct std::hash<giopler::RecordValue> {
     std::size_t seed = 0;
     giopler::hash_combine(seed,
       record_value._record_value_type,
-      record_value._bool_value,
+      record_value._boolean_value,
       record_value._integer_value,
       record_value._real_value,
       record_value._string_value,
