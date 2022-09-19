@@ -507,35 +507,6 @@ private:
 };
 
 // -----------------------------------------------------------------------------
-/// create Record with common fields for an event
-Record create_event_record(const source_location& source_location,
-                           std::string_view event_category,
-                           std::string_view event)
-{
-  Record record{
-      {"evt.record_type"s,        "message"sv},
-      {"evt.event_category"s,     event_category},
-      {"evt.event"s,              event},
-
-      {"loc.file",                source_location.file_name()},
-      {"loc.line",                source_location.line()},
-      {"loc.function",            source_location.function_name()},
-
-      {"trc.function",            g_function_name},
-      {"trc.parent_function",     g_parent_function_name},
-
-      {"val.timestamp",           now()},
-      {"val.thread_id"s,          get_thread_id()},
-      {"val.node_id"s,            get_node_id()},
-      {"val.cpu_id"s,             get_cpu_id()},
-      {"val.available_memory"s,   get_available_memory()}
-  };
-
-  record.merge(g_attributes);
-  return record;
-}
-
-// -----------------------------------------------------------------------------
 /// read program-wide variables
 // these values are constant per program run
 Record create_program_record() {
@@ -556,6 +527,65 @@ Record create_program_record() {
       {"prog.real_username"s,       get_real_username()},
       {"prog.effective_username"s,  get_effective_username()}
   };
+  return record;
+}
+
+// -----------------------------------------------------------------------------
+/// create Record with common location fields for an event
+Record create_location_record(const source_location& source_location)
+{
+  Record record{
+      {"loc.file",                source_location.file_name()},
+      {"loc.line",                source_location.line()},
+      {"loc.function",            source_location.function_name()},
+
+      {"trc.function",            g_function_name},
+      {"trc.parent_function",     g_parent_function_name},
+
+      {"val.timestamp",           now()},
+      {"val.thread_id"s,          get_thread_id()},
+      {"val.node_id"s,            get_node_id()},
+      {"val.cpu_id"s,             get_cpu_id()},
+      {"val.available_memory"s,   get_available_memory()}
+  };
+
+  return record;
+}
+
+// -----------------------------------------------------------------------------
+/// create Record with fields for message events
+Record create_message_record(const source_location& source_location,
+                             std::string_view event_category,
+                             std::string_view event,
+                             std::string_view message)
+{
+  Record record{create_location_record(source_location)};
+
+  record.insert({
+      {"evt.record_type"s,        "message"sv},
+      {"evt.event_category"s,     event_category},
+      {"evt.event"s,              event},
+
+      {"val.message"s,            message}
+  });
+
+  record.merge(g_attributes);
+  return record;
+}
+
+// -----------------------------------------------------------------------------
+/// create Record with common fields for an event
+Record create_profile_record(const source_location& source_location, double workload)
+{
+  Record record{create_location_record(source_location)};
+
+  record.insert({
+      {"evt.record_type"s,        "profile"sv},
+      {"evt.event_category"s,     "profile"sv},
+      {"prof.workload"s,          workload}
+  });
+
+  record.merge(g_attributes);
   return record;
 }
 

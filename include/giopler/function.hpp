@@ -57,7 +57,7 @@ class Function {
 
     if constexpr (g_build_mode == BuildMode::Dev) {
       std::shared_ptr<Record> record = std::make_shared<Record>(
-          create_event_record(source_location, "trace"sv, "function_entry"sv));
+          create_message_record(source_location, "trace"sv, "function_entry"sv, ""sv));
       sink::g_sink_manager.write_record(record);
     } else if constexpr (g_build_mode == BuildMode::Prof) {
       _event_counters_start    = std::make_unique<Record>(read_event_counters());
@@ -68,16 +68,16 @@ class Function {
   ~Function() {
     if constexpr (g_build_mode == BuildMode::Dev) {
       std::shared_ptr<Record> record = std::make_shared<Record>(
-          create_event_record(*_source_location, "trace"sv, "function_exit"sv));
+          create_message_record(*_source_location, "trace"sv, "function_exit"sv, ""sv));
       sink::g_sink_manager.write_record(record);
     } else if constexpr (g_build_mode == BuildMode::Prof) {
       std::shared_ptr<Record> record_total = std::make_shared<Record>(
-          create_event_record(*_source_location, "profile"sv, "function_total"sv));
-      record_total->insert({{"prof.workload", _workload}});   // workload is same for total and self
-      std::shared_ptr<Record> record_self = std::make_shared<Record>(*record_total);
-      (*record_self)["evt.event"s] = "function_self"s;   // insert() does not overwrite
+          create_profile_record(*_source_location, _workload));
+      std::shared_ptr<Record> record_self = std::make_shared<Record>(*record_total);   // clone
+      (*record_total)["evt.event"s] = "function_total"s;   // insert() does not overwrite
+      (*record_self)["evt.event"s]  = "function_self"s;   // insert() does not overwrite
 
-      _duration_total  = timestamp_diff(_start_time, now());
+      _duration_total = timestamp_diff(_start_time, now());
       Record event_counters_total{read_event_counters()};
       Record event_counters_self{event_counters_total};   // merge() is a mutating operation
       subtract_number_record(event_counters_total, *_event_counters_start);

@@ -41,23 +41,22 @@ class Program
     {
       if constexpr (g_build_mode != BuildMode::Off) {
         std::shared_ptr<Record> record = std::make_shared<Record>(
-            create_event_record(source_location, "all"sv, "program_info"sv));
-        record->merge(create_program_record());
+            create_program_record());
         sink::g_sink_manager.write_record(record);
       }
 
-      if constexpr (g_build_mode == BuildMode::Dev) {
+      if constexpr (g_build_mode != BuildMode::Off) {
         _source_location = std::make_unique<giopler::source_location>(source_location);
         std::shared_ptr<Record> record = std::make_shared<Record>(
-            create_event_record(source_location, "trace"sv, "program_entry"sv));
+            create_message_record(source_location, "trace"sv, "program_entry"sv, ""sv));
         sink::g_sink_manager.write_record(record);
       }
     }
 
     ~Program() {
-      if constexpr (g_build_mode == BuildMode::Dev) {
+      if constexpr (g_build_mode != BuildMode::Off) {
         std::shared_ptr<Record> record = std::make_shared<Record>(
-            create_event_record(*_source_location, "trace"sv, "program_exit"sv));
+            create_message_record(*_source_location, "trace"sv, "program_exit"sv, ""sv));
         sink::g_sink_manager.write_record(record);
       }
     }

@@ -43,7 +43,7 @@ class Thread
       if constexpr (g_build_mode == BuildMode::Dev) {
         _source_location = std::make_unique<giopler::source_location>(source_location);
         std::shared_ptr<Record> record = std::make_shared<Record>(
-            create_event_record(source_location, "trace"sv, "thread_entry"sv));
+            create_message_record(source_location, "trace"sv, "thread_entry"sv, ""sv));
         sink::g_sink_manager.write_record(record);
       } else if constexpr (g_build_mode == BuildMode::Prof) {
         _start_time           = now();
@@ -55,11 +55,12 @@ class Thread
     ~Thread() {
       if constexpr (g_build_mode == BuildMode::Dev) {
         std::shared_ptr<Record> record = std::make_shared<Record>(
-            create_event_record(*_source_location, "trace"sv, "thread_exit"sv));
+            create_message_record(*_source_location, "trace"sv, "thread_exit"sv, ""sv));
         sink::g_sink_manager.write_record(record);
       } else if constexpr (g_build_mode == BuildMode::Prof) {
         std::shared_ptr<Record> record_total = std::make_shared<Record>(
-            create_event_record(*_source_location, "profile"sv, "thread"sv));
+            create_profile_record(*_source_location, 0));
+        record_total->insert({ "evt.event"s, "thread"sv});
 
         const double _duration_total = timestamp_diff(_start_time, now());
         Record event_counters_total{read_event_counters()};

@@ -45,8 +45,7 @@ void line(const std::string_view message,
     return;
   } else {
     std::shared_ptr<Record> record = std::make_shared<Record>(
-        create_event_record(source_location, "trace", "line"));
-    record->insert({{"val.message", message}});
+        create_message_record(source_location, "trace", "line", message));
     sink::g_sink_manager.write_record(record);
   }
 }
@@ -59,8 +58,7 @@ void line(StringFunction auto message_function,
     return;
   } else {
     std::shared_ptr<Record> record = std::make_shared<Record>(
-        create_event_record(source_location, "trace", "line"));
-    record->insert({{"val.message", message_function()}});
+        create_message_record(source_location, "trace", "line", message_function()));
     sink::g_sink_manager.write_record(record);
   }
 }
@@ -119,8 +117,7 @@ void branch(const std::string_view message,
     return;
   } else {
     std::shared_ptr<Record> record = std::make_shared<Record>(
-        create_event_record(source_location, "trace", "branch"));
-    record->insert({{"val.message", message}});
+        create_message_record(source_location, "trace", "branch", message));
     sink::g_sink_manager.write_record(record);
   }
 }
@@ -133,7 +130,7 @@ void branch(StringFunction auto message_function,
     return;
   } else {
     std::shared_ptr<Record> record = std::make_shared<Record>(
-        create_event_record(source_location, "trace", "branch"));
+        create_message_record(source_location, "trace", "branch", message_function()));
     record->insert({{"val.message", message_function()}});
     sink::g_sink_manager.write_record(record);
   }
