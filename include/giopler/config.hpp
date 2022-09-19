@@ -35,7 +35,8 @@
 using namespace std::literals;
 
 // -----------------------------------------------------------------------------
-namespace giopler {
+namespace giopler
+{
 
 // -----------------------------------------------------------------------------
 // g_build_mode controls the operating mode for the library.

@@ -42,7 +42,7 @@ class Program
       if constexpr (g_build_mode != BuildMode::Off) {
         std::shared_ptr<Record> record = std::make_shared<Record>(
             create_event_record(source_location, "all"sv, "program_info"sv));
-        record->merge(read_program_info());
+        record->merge(create_program_record());
         sink::g_sink_manager.write_record(record);
       }
 

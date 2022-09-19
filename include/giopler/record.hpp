@@ -53,6 +53,7 @@ namespace giopler {
 
 // these values are constant for the duration of the program run
 // - prog.run_id                  - string    - generated at client; unique to program run (UUID)
+// - prog.start_ts                - timestamp - when program started running
 // - prog.memory_page_size        - integer   - memory page size (bytes)
 // - prog.physical_memory         - integer   - physical memory size (bytes)
 // - prog.total_cpu_cores         - integer   - total number of CPU cores
@@ -67,7 +68,7 @@ namespace giopler {
 // - prog.effective_username      - string    - username that the process is running under
 
 // these values could change as the program runs
-// - evt.record_type              - string    - program, trace, message, profile
+// - evt.record_type              - string    - program, message, profile
 // - evt.event_category           - string    - contract, dev, prof, test, prod
 // - evt.event                    - string    - uniquely identifies the event
 // - attr.*                       - any       - user-defined attributes
@@ -86,11 +87,10 @@ namespace giopler {
 // - val.available_memory         - integer   - free memory size (bytes)
 
 // - val.message                  - string    - additional event details
-// - prof.count                   - integer   - number of times the function or block was executed  ********************
 
 // - prof.workload                - real      - user-assigned weight to profiled function calls (same for total and self)
 
-// All of these have two versions:
+// All of these have two event versions:
 // - function_total               - sum of the function and other functions it calls
 // - function_self                - sum of only the function, excluding other functions called
 
@@ -287,6 +287,7 @@ using RecordInit = std::initializer_list<Record::value_type>;
 const RecordCatalog& get_record_catalog() {
   static const RecordCatalog record_catalog{
       {"prog.run_id"s,                        {RecordValue::Type::String,     "prog"s, 1}},
+      {"prog.start_ts"s,                      {RecordValue::Type::Timestamp,  "prog"s, 1}},
       {"prog.memory_page_size"s,              {RecordValue::Type::Integer,    "prog"s, 1}},
       {"prog.physical_memory"s,               {RecordValue::Type::Integer,    "prog"s, 1}},
       {"prog.total_cpu_cores"s,               {RecordValue::Type::Integer,    "prog"s, 1}},
@@ -512,7 +513,7 @@ Record create_event_record(const source_location& source_location,
                            std::string_view event)
 {
   Record record{
-      {"evt.record_type"s,        "event"sv},
+      {"evt.record_type"s,        "message"sv},
       {"evt.event_category"s,     event_category},
       {"evt.event"s,              event},
 
@@ -537,11 +538,11 @@ Record create_event_record(const source_location& source_location,
 // -----------------------------------------------------------------------------
 /// read program-wide variables
 // these values are constant per program run
-Record read_program_info() {
+Record create_program_record() {
   Record record{
       {"evt.record_type"s,          "program"sv},
-      {"prog.start_ts"s,            now()},
       {"prog.run_id"s,              get_run_id()},
+      {"prog.start_ts"s,            now()},
       {"prog.memory_page_size"s,    get_memory_page_size()},
       {"prog.physical_memory"s,     get_physical_memory()},
       {"prog.total_cpu_cores"s,     get_total_cpu_cores()},

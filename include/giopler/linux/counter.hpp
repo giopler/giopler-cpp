@@ -28,6 +28,7 @@
 #error Support for C++20 or newer is required to use this library.
 #endif
 
+#include <math.h>
 #include "giopler/record.hpp"
 
 // -----------------------------------------------------------------------------
@@ -110,26 +111,26 @@ class LinuxEvent {
     enable_event(_name1, _fd1, (_num_events == 1 ? Group::single : Group::leader));
   }
 
-  uint64_t read_event() {
+  int64_t read_event() {
     return read_event1();
   }
 
-  uint64_t read_event1() {
+  int64_t read_event1() {
     assert(_num_events >= 1);
     return read_event(_name1, _fd1);
   }
 
-  uint64_t read_event2() {
+  int64_t read_event2() {
     assert(_num_events >= 2);
     return read_event(_name2, _fd2);
   }
 
-  uint64_t read_event3() {
+  int64_t read_event3() {
     assert(_num_events >= 3);
     return read_event(_name3, _fd3);
   }
 
-  uint64_t read_event4() {
+  int64_t read_event4() {
     assert(_num_events >= 4);
     return read_event(_name4, _fd4);
   }
@@ -201,7 +202,7 @@ class LinuxEvent {
 
   /// read the counter value
   // the value is scaled to account for performance counter multiplexing
-  static uint64_t read_event(const std::string_view name, const int fd) {
+  static int64_t read_event(const std::string_view name, const int fd) {
     struct ReadData {
       uint64_t value;         /* The value of the event */
       uint64_t time_enabled;  /* if PERF_FORMAT_TOTAL_TIME_ENABLED */
@@ -217,8 +218,8 @@ class LinuxEvent {
     }
 
     if (read_data.time_enabled && read_data.time_running) {
-      const double active_pct       = static_cast<double>(read_data.time_running) / static_cast<double>(read_data.time_enabled);
-      const uint64_t scaled_counter = static_cast<uint64_t>(static_cast<double>(read_data.value) * (1.0 / active_pct));
+      const double active_pct = static_cast<double>(read_data.time_running) / static_cast<double>(read_data.time_enabled);
+      const std::int64_t scaled_counter = std::lround(static_cast<double>(read_data.value) * (1.0 / active_pct));
       // std::cout << name << " = " << scaled_counter << " <= " << read_data.value
       //           << " (" << read_data.time_running << "/" << read_data.time_enabled << ")" << std::endl;
       return scaled_counter;
