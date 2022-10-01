@@ -68,7 +68,7 @@ namespace giopler {
 // - prog.effective_username      - string    - username that the process is running under
 
 // these values could change as the program runs
-// - evt.record_type              - string    - program, message, profile
+// - evt.record_type              - string    - program, message, profile_linux
 // - evt.event_category           - string    - contract, dev, prof, test, prod
 // - evt.event                    - string    - uniquely identifies the event
 // - attr.*                       - any       - user-defined attributes
@@ -114,11 +114,11 @@ namespace giopler {
 // - prof.hw.stall_cycles_front   - integer   - Stalled cycles during issue in the frontend
 // - prof.hw.stall_cycles_back    - integer   - Stalled cycles during retirement in the backend
 
-// - prof.hw.cache_references     - integer   - Cache accesses. Usually this indicates Last Level Cache accesses
-// - prof.hw.cache_misses         - integer   - Cache misses. Usually this indicates Last Level Cache misses
-
 // - prof.hw.branch_instructions  - integer   - Retired branch instructions (i.e., executed)
 // - prof.hw.branch_misses        - integer   - Mispredicted branch instructions
+
+// - prof.hw.cache_references     - integer   - Cache accesses. Usually this indicates Last Level Cache accesses
+// - prof.hw.cache_misses         - integer   - Cache misses. Usually this indicates Last Level Cache misses
 
 // -----------------------------------------------------------------------------
 /// replacement for std::variant; eventually might become a wrapper
@@ -313,7 +313,6 @@ const RecordCatalog& get_record_catalog() {
       {"val.available_memory"s,               {RecordValue::Type::Integer,    "val"s, 1}},
       {"val.message"s,                        {RecordValue::Type::String,     "val"s, 1}},
 
-      {"prof.count"s,                         {RecordValue::Type::Integer,    "prof.all"s, 1}},
       {"prof.workload"s,                      {RecordValue::Type::Real,       "prof.all"s, 1}},
       {"prof.duration"s,                      {RecordValue::Type::Real,       "prof.all"s, ns_to_sec}},
 
@@ -333,11 +332,11 @@ const RecordCatalog& get_record_catalog() {
       {"prof.hw.stall_cycles_front"s,         {RecordValue::Type::Integer,    "prof.linux.hw"s, 1}},
       {"prof.hw.stall_cycles_back"s,          {RecordValue::Type::Integer,    "prof.linux.hw"s, 1}},
 
-      {"prof.hw.cache_references"s,           {RecordValue::Type::Integer,    "prof.linux.hw"s, 1}},
-      {"prof.hw.cache_misses"s,               {RecordValue::Type::Integer,    "prof.linux.hw"s, 1}},
-
       {"prof.hw.branch_instructions"s,        {RecordValue::Type::Integer,    "prof.linux.hw"s, 1}},
       {"prof.hw.branch_misses"s,              {RecordValue::Type::Integer,    "prof.linux.hw"s, 1}},
+
+      {"prof.hw.cache_references"s,           {RecordValue::Type::Integer,    "prof.linux.hw"s, 1}},
+      {"prof.hw.cache_misses"s,               {RecordValue::Type::Integer,    "prof.linux.hw"s, 1}}
   };
 
   return record_catalog;
@@ -575,12 +574,12 @@ Record create_message_record(const source_location& source_location,
 
 // -----------------------------------------------------------------------------
 /// create Record with common fields for an event
-Record create_profile_record(const source_location& source_location, double workload)
+Record create_profile_record(const source_location& source_location, std::string_view record_type, double workload)
 {
   Record record{create_location_record(source_location)};
 
   record.insert({
-      {"evt.record_type"s,        "profile"sv},
+      {"evt.record_type"s,        record_type},
       {"evt.event_category"s,     "profile"sv},
       {"prof.workload"s,          workload}
   });

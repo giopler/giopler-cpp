@@ -29,7 +29,7 @@ set(CMAKE_CXX_STANDARD 20)            # set C++20 as the default
 set(CMAKE_CXX_STANDARD_REQUIRED ON)   # require C++20
 set(CMAKE_CXX_EXTENSIONS OFF)         # turn off GNU compiler extensions
 
-project(Giopler
+project(Giopler-Cpp
   VERSION 0.1.1
   DESCRIPTION "A profiling, logging, and testing library for C++20"
   HOMEPAGE_URL "https://github.com/gioppler/gioppler"

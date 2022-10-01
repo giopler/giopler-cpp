@@ -254,8 +254,8 @@ class LinuxEvents {
 
     _fd_hw_cpu_cycles_instr_group->enable_events();
     _fd_hw_cpu_stalled_cycles_group->enable_events();
-    _fd_hw_cache_references_misses_group->enable_events();
     _fd_hw_branch_instructions_misses_group->enable_events();
+    _fd_hw_cache_references_misses_group->enable_events();
   }
 
   /// get the current values of the performance counters
@@ -277,11 +277,12 @@ class LinuxEvents {
       {""s, _fd_hw_cpu_stalled_cycles_group->read_event1()},
       {""s, _fd_hw_cpu_stalled_cycles_group->read_event2()},
 
-      {""s, _fd_hw_cache_references_misses_group->read_event1()},
-      {""s, _fd_hw_cache_references_misses_group->read_event2()},
-
       {""s, _fd_hw_branch_instructions_misses_group->read_event1()},
-      {""s, _fd_hw_branch_instructions_misses_group->read_event2()}
+      {""s, _fd_hw_branch_instructions_misses_group->read_event2()},
+
+      {""s, _fd_hw_cache_references_misses_group->read_event1()},
+      {""s, _fd_hw_cache_references_misses_group->read_event2()}
+
     });
   }
 
@@ -345,17 +346,18 @@ class LinuxEvents {
                                      "PERF_COUNT_HW_STALLED_CYCLES_BACKEND",
                                      PERF_TYPE_HARDWARE, PERF_COUNT_HW_STALLED_CYCLES_BACKEND);
 
+    _fd_hw_branch_instructions_misses_group =
+        std::make_unique<LinuxEvent>("PERF_COUNT_HW_BRANCH_INSTRUCTIONS",
+                                     PERF_TYPE_HARDWARE, PERF_COUNT_HW_BRANCH_INSTRUCTIONS,
+                                     "PERF_COUNT_HW_BRANCH_MISSES",
+                                     PERF_TYPE_HARDWARE, PERF_COUNT_HW_BRANCH_MISSES);
+
     _fd_hw_cache_references_misses_group =
         std::make_unique<LinuxEvent>("PERF_COUNT_HW_CACHE_REFERENCES",
                                      PERF_TYPE_HARDWARE, PERF_COUNT_HW_CACHE_REFERENCES,
                                      "PERF_COUNT_HW_CACHE_MISSES",
                                      PERF_TYPE_HARDWARE, PERF_COUNT_HW_CACHE_MISSES);
 
-    _fd_hw_branch_instructions_misses_group =
-        std::make_unique<LinuxEvent>("PERF_COUNT_HW_BRANCH_INSTRUCTIONS",
-                                     PERF_TYPE_HARDWARE, PERF_COUNT_HW_BRANCH_INSTRUCTIONS,
-                                     "PERF_COUNT_HW_BRANCH_MISSES",
-                                     PERF_TYPE_HARDWARE, PERF_COUNT_HW_BRANCH_MISSES);
   }
 
   /// convert nanosecond counter to floating point seconds

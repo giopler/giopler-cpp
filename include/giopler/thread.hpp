@@ -59,7 +59,7 @@ class Thread
         sink::g_sink_manager.write_record(record);
       } else if constexpr (g_build_mode == BuildMode::Prof) {
         std::shared_ptr<Record> record_total = std::make_shared<Record>(
-            create_profile_record(*_source_location, 0));
+            create_profile_record(*_source_location, "profile_linux", 0));
         record_total->insert({ "evt.event"s, "thread"sv});
 
         const double _duration_total = timestamp_diff(_start_time, now());
