@@ -47,6 +47,7 @@ using namespace std::literals;
 
 #include "giopler/config.hpp"
 #include "giopler/platform.hpp"
+#include "giopler/pcg.hpp"
 
 // -----------------------------------------------------------------------------
 /// String formatting function
@@ -294,40 +295,45 @@ std::string format_source_location(const source_location &location)
 
 // -----------------------------------------------------------------------------
 // Generator Version 4 Variant 1 UUIDs from random values
+// produces about 7 million UUIDs per second (per CPU core)
 // https://stackoverflow.com/questions/24365331/how-can-i-generate-uuid-in-c-without-using-boost-library
 // https://datatracker.ietf.org/doc/html/rfc4122
 // https://en.wikipedia.org/wiki/Universally_unique_identifier
 // cat /proc/sys/kernel/random/uuid
 std::string get_uuid()
 {
-    static thread_local std::random_device                    rd;
-    static thread_local std::default_random_engine            gen(rd());
+    static constexpr auto UUID_LEN = 36;   // 5c47ba38-3e2b-48b1-988e-f16921213939
+    static const char hex_char[] =
+      {'0', '1', '2', '3', '4', '5', '6', '7',
+       '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
+    static thread_local pcg                               gen;
     static thread_local std::uniform_int_distribution<> hex_digit(0, 15);
     static thread_local std::uniform_int_distribution<>   variant(8, 11);
 
-    std::stringstream ss;
-    ss << std::hex;
-    for (uint_fast8_t i = 0; i < 8; ++i) {
-        ss << hex_digit(gen);
+    std::string result;
+    result.reserve(UUID_LEN);
+    for (int i = 0; i < 8; ++i) {
+      result.push_back(hex_char[hex_digit(gen)]);
     }
-    ss << "-";
-    for (uint_fast8_t i = 0; i < 4; ++i) {
-        ss << hex_digit(gen);
+    result.push_back('-');
+    for (int i = 0; i < 4; ++i) {
+      result.push_back(hex_char[hex_digit(gen)]);
     }
-    ss << "-4";
-    for (uint_fast8_t i = 0; i < 3; ++i) {
-        ss << hex_digit(gen);
+    result.push_back('-');
+    result.push_back('4');
+    for (int i = 0; i < 3; ++i) {
+      result.push_back(hex_char[hex_digit(gen)]);
     }
-    ss << "-";
-    ss << variant(gen);
-    for (uint_fast8_t i = 0; i < 3; ++i) {
-        ss << hex_digit(gen);
+    result.push_back('-');
+    result.push_back(hex_char[variant(gen)]);
+    for (int i = 0; i < 3; ++i) {
+      result.push_back(hex_char[hex_digit(gen)]);
     }
-    ss << "-";
-    for (uint_fast8_t i = 0; i < 12; ++i) {
-        ss << hex_digit(gen);
+    result.push_back('-');
+    for (int i = 0; i < 12; ++i) {
+      result.push_back(hex_char[hex_digit(gen)]);
     };
-    return ss.str();
+    return result;
 }
 
 // -----------------------------------------------------------------------------
