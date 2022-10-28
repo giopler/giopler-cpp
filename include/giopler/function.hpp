@@ -29,6 +29,7 @@
 
 #include <memory>
 #include <string>
+
 #include "giopler/counter.hpp"
 
 // -----------------------------------------------------------------------------
@@ -40,6 +41,7 @@ class Function {
   explicit Function([[maybe_unused]] const double workload = 0,
                     [[maybe_unused]] giopler::source_location source_location = giopler::source_location::current())
     : _workload{workload},
+      _event_id{giopler::get_uuid()},
       _duration_total{},
       _duration_children{}
   {
@@ -57,7 +59,7 @@ class Function {
 
     if constexpr (g_build_mode == BuildMode::Dev) {
       std::shared_ptr<Record> record = std::make_shared<Record>(
-          create_message_record(source_location, "trace"sv, "function_entry"sv, ""sv));
+          create_message_record(source_location, _event_id, "trace"sv, "function_entry"sv, ""sv));
       sink::g_sink_manager.write_record(record);
     } else if constexpr (g_build_mode == BuildMode::Prof) {
       _event_counters_start    = std::make_unique<Record>(read_event_counters());
@@ -68,11 +70,11 @@ class Function {
   ~Function() {
     if constexpr (g_build_mode == BuildMode::Dev) {
       std::shared_ptr<Record> record = std::make_shared<Record>(
-          create_message_record(*_source_location, "trace"sv, "function_exit"sv, ""sv));
+          create_message_record(*_source_location, _event_id, "trace"sv, "function_exit"sv, ""sv));
       sink::g_sink_manager.write_record(record);
     } else if constexpr (g_build_mode == BuildMode::Prof) {
       std::shared_ptr<Record> record_total = std::make_shared<Record>(
-          create_profile_record(*_source_location, "profile_linux", _workload));
+          create_profile_record(*_source_location, _event_id, "profile_linux", _workload));
       std::shared_ptr<Record> record_self = std::make_shared<Record>(*record_total);   // clone
       (*record_total)["evt.event"s] = "function_total"s;   // insert() does not overwrite
       (*record_self)["evt.event"s]  = "function_self"s;   // insert() does not overwrite
@@ -110,10 +112,11 @@ class Function {
  private:
   const double _workload;
   Timestamp _start_time;
+  std::string _event_id;
   double _duration_total;
   double _duration_children;
 
-  // use shared pointers to minimize their cost if build mode disables the class
+  // use unique pointers to minimize their cost if build mode disables the class
   std::unique_ptr<giopler::source_location> _source_location;
   std::string _old_parent_function_name;
   std::string _old_function_name;

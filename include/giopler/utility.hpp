@@ -295,7 +295,7 @@ std::string format_source_location(const source_location &location)
 
 // -----------------------------------------------------------------------------
 // Generator Version 4 Variant 1 UUIDs from random values
-// produces about 7 million UUIDs per second (per CPU core)
+// can produce about 7 million UUIDs per second (per CPU core)
 // https://stackoverflow.com/questions/24365331/how-can-i-generate-uuid-in-c-without-using-boost-library
 // https://datatracker.ietf.org/doc/html/rfc4122
 // https://en.wikipedia.org/wiki/Universally_unique_identifier

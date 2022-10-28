@@ -45,7 +45,7 @@ void line(const std::string_view message,
     return;
   } else {
     std::shared_ptr<Record> record = std::make_shared<Record>(
-        create_message_record(source_location, "trace", "line", message));
+        create_message_record(source_location, get_uuid(), "trace", "line", message));
     sink::g_sink_manager.write_record(record);
   }
 }
@@ -117,7 +117,7 @@ void branch(const std::string_view message,
     return;
   } else {
     std::shared_ptr<Record> record = std::make_shared<Record>(
-        create_message_record(source_location, "trace", "branch", message));
+        create_message_record(source_location, get_uuid(), "trace", "branch", message));
     sink::g_sink_manager.write_record(record);
   }
 }
@@ -130,7 +130,7 @@ void branch(StringFunction auto message_function,
     return;
   } else {
     std::shared_ptr<Record> record = std::make_shared<Record>(
-        create_message_record(source_location, "trace", "branch", message_function()));
+        create_message_record(source_location, get_uuid(), "trace", "branch", message_function()));
     record->insert({{"val.message", message_function()}});
     sink::g_sink_manager.write_record(record);
   }

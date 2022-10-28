@@ -47,8 +47,9 @@ class Program
 
       if constexpr (g_build_mode != BuildMode::Off) {
         _source_location = std::make_unique<giopler::source_location>(source_location);
+        _event_id = get_uuid();
         std::shared_ptr<Record> record = std::make_shared<Record>(
-            create_message_record(source_location, "trace"sv, "program_entry"sv, ""sv));
+            create_message_record(source_location, _event_id, "trace"sv, "program_entry"sv, ""sv));
         sink::g_sink_manager.write_record(record);
       }
     }
@@ -56,13 +57,14 @@ class Program
     ~Program() {
       if constexpr (g_build_mode != BuildMode::Off) {
         std::shared_ptr<Record> record = std::make_shared<Record>(
-            create_message_record(*_source_location, "trace"sv, "program_exit"sv, ""sv));
+            create_message_record(*_source_location, _event_id, "trace"sv, "program_exit"sv, ""sv));
         sink::g_sink_manager.write_record(record);
       }
     }
 
  private:
   std::unique_ptr<giopler::source_location> _source_location;
+    std::string _event_id;
 };
 
 // -----------------------------------------------------------------------------

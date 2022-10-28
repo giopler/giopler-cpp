@@ -87,7 +87,7 @@ void argument(const bool condition,
       format("ERROR: {}: invalid argument",
              format_source_location(source_location));
     std::shared_ptr<Record> record = std::make_shared<Record>(
-        create_message_record(source_location, "contract", "argument", message));
+        create_message_record(source_location, get_uuid(), "contract", "argument", message));
 
     sink::g_sink_manager.write_record(record);
     sink::g_sink_manager.flush();   // next line could terminate program
@@ -110,7 +110,7 @@ void expect(const bool condition,
       format("ERROR: {}: expect condition failed",
              format_source_location(source_location));
     std::shared_ptr<Record> record = std::make_shared<Record>(
-        create_message_record(source_location, "contract", "expect", message));
+        create_message_record(source_location, get_uuid(), "contract", "expect", message));
 
     sink::g_sink_manager.write_record(record);
     sink::g_sink_manager.flush();   // next line could terminate program
@@ -132,7 +132,7 @@ void confirm(const bool condition,
       format("ERROR: {}: confirm failed",
              format_source_location(source_location));
     std::shared_ptr<Record> record = std::make_shared<Record>(
-        create_message_record(source_location, "contract", "confirm", message));
+        create_message_record(source_location, get_uuid(), "contract", "confirm", message));
 
     sink::g_sink_manager.write_record(record);
     sink::g_sink_manager.flush();   // next line could terminate program
@@ -162,7 +162,8 @@ class Invariant {
               source_location::current())
   : _uncaught_exceptions(std::uncaught_exceptions()),
     _condition_function(std::move(condition_function)),
-    _source_location(source_location)
+    _source_location(source_location),
+    _event_id{get_uuid()}
   {
     if constexpr (!(g_build_mode == BuildMode::Dev || g_build_mode == BuildMode::Test || g_build_mode == BuildMode::Qa)) {
       return;
@@ -171,7 +172,7 @@ class Invariant {
         format("ERROR: {}: invariant failed on entry",
                format_source_location(_source_location));
       std::shared_ptr<Record> record = std::make_shared<Record>(
-          create_message_record(source_location, "contract", "invariant", message));
+          create_message_record(source_location, _event_id, "contract", "invariant", message));
 
       sink::g_sink_manager.write_record(record);
       sink::g_sink_manager.flush();   // next line could terminate program
@@ -191,7 +192,7 @@ class Invariant {
           format("ERROR: {}: invariant failed on exit",
                  format_source_location(_source_location));
         std::shared_ptr<Record> record = std::make_shared<Record>(
-            create_message_record(_source_location, "contract", "invariant", message));
+            create_message_record(_source_location, _event_id, "contract", "invariant", message));
 
         sink::g_sink_manager.write_record(record);
         sink::g_sink_manager.flush();   // next line could terminate program
@@ -210,6 +211,7 @@ class Invariant {
   int _uncaught_exceptions;
   std::function<bool()> _condition_function;
   source_location _source_location;
+  std::string _event_id;
 };
 
 // -----------------------------------------------------------------------------
@@ -223,7 +225,8 @@ class Ensure {
           source_location::current())
   : _uncaught_exceptions(std::uncaught_exceptions()),
     _condition_function(std::move(condition_function)),
-    _source_location{source_location}
+    _source_location{source_location},
+    _event_id{get_uuid()}
   { }
 
   // check condition only on scope exit
@@ -238,7 +241,7 @@ class Ensure {
           format("ERROR: {}: ensure condition failed on exit",
                  format_source_location(_source_location));
         std::shared_ptr<Record> record = std::make_shared<Record>(
-            create_message_record(_source_location, "contract", "ensure", message));
+            create_message_record(_source_location, _event_id, "contract", "ensure", message));
 
         sink::g_sink_manager.write_record(record);
         sink::g_sink_manager.flush();   // next line could terminate program
@@ -257,6 +260,7 @@ class Ensure {
   int _uncaught_exceptions;
   std::function<bool()> _condition_function;
   source_location _source_location;
+  std::string _event_id;
 };
 
 // -----------------------------------------------------------------------------
@@ -289,7 +293,7 @@ void certify(const bool condition,
       format("ERROR: {}: invalid argument",
              format_source_location(source_location));
     std::shared_ptr<Record> record = std::make_shared<Record>(
-        create_message_record(source_location, "contract", "certify", message));
+        create_message_record(source_location, get_uuid(), "contract", "certify", message));
 
     sink::g_sink_manager.write_record(record);
     sink::g_sink_manager.flush();   // next line could terminate program

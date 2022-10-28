@@ -68,6 +68,7 @@ namespace giopler {
 // - prog.effective_username      - string    - username that the process is running under
 
 // these values could change as the program runs
+// - evt.event_id                 - string    - UUID, unique to event
 // - evt.record_type              - string    - program, message, profile_linux
 // - evt.event_category           - string    - contract, dev, prof, test, prod
 // - evt.event                    - string    - uniquely identifies the event
@@ -296,6 +297,7 @@ const RecordCatalog& get_record_catalog() {
       {"prog.process_id"s,                    {RecordValue::Type::Integer,    "prog"s, 1}},
       {"prog.build_mode"s,                    {RecordValue::Type::String,     "prog"s, 1}},
 
+      {"evt.event_id"s,                       {RecordValue::Type::String,     "evt"s, 1}},
       {"evt.record_type"s,                    {RecordValue::Type::String,     "evt"s, 1}},
       {"evt.event_category"s,                 {RecordValue::Type::String,     "evt"s, 1}},
       {"evt.event"s,                          {RecordValue::Type::String,     "evt"s, 1}},
@@ -554,6 +556,7 @@ Record create_location_record(const source_location& source_location)
 // -----------------------------------------------------------------------------
 /// create Record with fields for message events
 Record create_message_record(const source_location& source_location,
+                             std::string_view event_id,
                              std::string_view event_category,
                              std::string_view event,
                              std::string_view message)
@@ -562,6 +565,7 @@ Record create_message_record(const source_location& source_location,
 
   record.insert({
       {"evt.record_type"s,        "message"sv},
+      {"evt.event_id"s,           event_id},
       {"evt.event_category"s,     event_category},
       {"evt.event"s,              event},
 
@@ -574,12 +578,16 @@ Record create_message_record(const source_location& source_location,
 
 // -----------------------------------------------------------------------------
 /// create Record with common fields for an event
-Record create_profile_record(const source_location& source_location, std::string_view record_type, double workload)
+Record create_profile_record(const source_location& source_location,
+                             std::string_view record_type,
+                             std::string_view event_id,
+                             double workload)
 {
   Record record{create_location_record(source_location)};
 
   record.insert({
       {"evt.record_type"s,        record_type},
+      {"evt.event_id"s,           event_id},
       {"evt.event_category"s,     "profile"sv},
       {"prof.workload"s,          workload}
   });
