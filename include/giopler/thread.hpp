@@ -53,6 +53,10 @@ class Thread
       }
     }
 
+    std::string_view get_event_id() const {
+      return _event_id;
+    }
+
     ~Thread() {
       if constexpr (g_build_mode == BuildMode::Dev) {
         std::shared_ptr<Record> record = std::make_shared<Record>(

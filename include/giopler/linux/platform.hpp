@@ -194,6 +194,33 @@ std::string get_architecture()
 #endif   // defined GIOPLER_PLATFORM_LINUX
 
 // -----------------------------------------------------------------------------
+/// System host name
+#if defined(GIOPLER_PLATFORM_LINUX)     // Linux kernel; could be GNU or Android
+#include <unistd.h>
+#include <climits>                      // HOST_NAME_MAX
+namespace giopler {
+std::string get_host_name()
+{
+  char host_name[HOST_NAME_MAX];
+  const int status = gethostname(host_name, HOST_NAME_MAX);
+  if (status == 0) {
+    host_name[HOST_NAME_MAX-1] = '\0';   // make sure it is null-terminated
+    return host_name;
+  } else {
+    return ""s;
+  }
+}
+}   // namespace giopler
+#else
+namespace giopler {
+std::string get_host_name()
+{
+  return ""s;
+}
+}   // namespace giopler
+#endif   // defined GIOPLER_PLATFORM_LINUX
+
+// -----------------------------------------------------------------------------
 /// Real username
 #if defined(GIOPLER_PLATFORM_LINUX)      // Linux kernel; could be GNU or Android
 #include <unistd.h>

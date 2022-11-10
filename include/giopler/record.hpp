@@ -57,13 +57,14 @@ namespace giopler {
 // - prog.memory_page_size        - integer   - memory page size (bytes)
 // - prog.physical_memory         - integer   - physical memory size (bytes)
 // - prog.total_cpu_cores         - integer   - total number of CPU cores
-// - prog.available_cpu_cores     - integer   - number of available CPU cores
+// - prog.available_cpu_cores     - integer   - number of available CPU cores (powered-on/plugged-in)
 // - prog.program_name            - string    - system program name
 // - prog.process_id              - integer   - system process id (/proc/sys/kernel/pid_max)
 // - prog.build_mode              - string    - dev, test, prof, qa, prod
 // - prog.compiler                - string    - Gcc, Clang, Microsoft, Intel
 // - prog.platform                - string    - Linux, Windows, Bsd
 // - prog.architecture            - string    - x86_64
+// - prog.host_name               - string    - name of current host
 // - prog.real_username           - string    - logged-in username
 // - prog.effective_username      - string    - username that the process is running under
 
@@ -525,6 +526,7 @@ Record create_program_record() {
       {"prog.compiler"s,            get_compiler_name()},
       {"prog.platform"s,            get_platform_name()},
       {"prog.architecture"s,        get_architecture()},
+      {"prog.host_name"s,           get_host_name()},
       {"prog.real_username"s,       get_real_username()},
       {"prog.effective_username"s,  get_effective_username()}
   };

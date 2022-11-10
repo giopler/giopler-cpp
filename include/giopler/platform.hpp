@@ -42,6 +42,7 @@ extern uint64_t get_available_cpu_cores();
 extern std::string get_program_name();
 extern uint64_t get_process_id();
 extern std::string get_architecture();
+extern std::string get_host_name();
 extern std::string get_real_username();
 extern std::string get_effective_username();
 
