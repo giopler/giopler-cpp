@@ -174,7 +174,7 @@ class Json : public Sink {
       return false;
     }
 
-    _osync_stream << record_to_json(_fields, record);
+    _osync_stream << record_to_json(record);
     return true;   // record was not filtered and it was written out
   }
 
@@ -246,56 +246,7 @@ class Csv : public Sink {
       return false;
     }
 
-    std::stringstream buffer;
-    bool first_field = true;
-    for (const auto& field : _fields) {
-      // CSV has to always include the requested field values, even if missing from the record
-      const RecordValue value = record->contains(field) ? record->at(field) : RecordValue(get_record_type(field));
-
-      if (first_field) {
-        first_field = false;
-      } else {
-        buffer << _separator;
-      }
-
-      switch (value.get_type()) {
-        case RecordValue::Type::Boolean: {
-          buffer << format("{}", value.get_boolean());
-          break;
-        }
-
-        case RecordValue::Type::Integer: {
-          const double scale = get_record_scale(field);
-          if (scale == 1) {
-          buffer << format("{}", value.get_integer());
-          } else {
-            buffer << format("{}", static_cast<double>(value.get_integer())*scale);
-          }
-          break;
-        }
-
-        case RecordValue::Type::Real: {
-          const double scale = get_record_scale(field);
-          buffer << format("{}", value.get_real()*scale);
-          break;
-        }
-
-        case RecordValue::Type::String: {
-          buffer << format("{0}{1}{0}", _string_quote, value.get_string());
-          break;
-        }
-
-        case RecordValue::Type::Timestamp: {
-          buffer << format("{0}{1}{0}", _string_quote, format_timestamp(value.get_timestamp()));
-          break;
-        }
-
-        default: assert(false);
-      }
-    }
-
-    buffer.put('\n');
-    _osync_stream << buffer.view();
+    _osync_stream << record_to_csv(_fields, record, _separator, _string_quote);
     return true;
   }
 

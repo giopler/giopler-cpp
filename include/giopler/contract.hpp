@@ -87,7 +87,7 @@ void argument(const bool condition,
       format("ERROR: {}: invalid argument",
              format_source_location(source_location));
     std::shared_ptr<Record> record = std::make_shared<Record>(
-        create_message_record(source_location, get_uuid(), "contract", "argument", message));
+        create_message_record(source_location, get_uuid(), "contract", "argument", 0, message));
 
     sink::g_sink_manager.write_record(record);
     sink::g_sink_manager.flush();   // next line could terminate program
@@ -110,7 +110,7 @@ void expect(const bool condition,
       format("ERROR: {}: expect condition failed",
              format_source_location(source_location));
     std::shared_ptr<Record> record = std::make_shared<Record>(
-        create_message_record(source_location, get_uuid(), "contract", "expect", message));
+        create_message_record(source_location, get_uuid(), "contract", "expect", 0, message));
 
     sink::g_sink_manager.write_record(record);
     sink::g_sink_manager.flush();   // next line could terminate program
@@ -132,7 +132,7 @@ void confirm(const bool condition,
       format("ERROR: {}: confirm failed",
              format_source_location(source_location));
     std::shared_ptr<Record> record = std::make_shared<Record>(
-        create_message_record(source_location, get_uuid(), "contract", "confirm", message));
+        create_message_record(source_location, get_uuid(), "contract", "confirm", 0, message));
 
     sink::g_sink_manager.write_record(record);
     sink::g_sink_manager.flush();   // next line could terminate program
@@ -172,7 +172,7 @@ class Invariant {
         format("ERROR: {}: invariant failed on entry",
                format_source_location(_source_location));
       std::shared_ptr<Record> record = std::make_shared<Record>(
-          create_message_record(source_location, _event_id, "contract", "invariant", message));
+          create_message_record(source_location, _event_id, "contract", "invariant", 0, message));
 
       sink::g_sink_manager.write_record(record);
       sink::g_sink_manager.flush();   // next line could terminate program
@@ -192,7 +192,7 @@ class Invariant {
           format("ERROR: {}: invariant failed on exit",
                  format_source_location(_source_location));
         std::shared_ptr<Record> record = std::make_shared<Record>(
-            create_message_record(_source_location, _event_id, "contract", "invariant", message));
+            create_message_record(_source_location, _event_id, "contract", "invariant", 0, message));
 
         sink::g_sink_manager.write_record(record);
         sink::g_sink_manager.flush();   // next line could terminate program
@@ -241,7 +241,7 @@ class Ensure {
           format("ERROR: {}: ensure condition failed on exit",
                  format_source_location(_source_location));
         std::shared_ptr<Record> record = std::make_shared<Record>(
-            create_message_record(_source_location, _event_id, "contract", "ensure", message));
+            create_message_record(_source_location, _event_id, "contract", "ensure", 0, message));
 
         sink::g_sink_manager.write_record(record);
         sink::g_sink_manager.flush();   // next line could terminate program
@@ -293,7 +293,7 @@ void certify(const bool condition,
       format("ERROR: {}: invalid argument",
              format_source_location(source_location));
     std::shared_ptr<Record> record = std::make_shared<Record>(
-        create_message_record(source_location, get_uuid(), "contract", "certify", message));
+        create_message_record(source_location, get_uuid(), "contract", "certify", 0, message));
 
     sink::g_sink_manager.write_record(record);
     sink::g_sink_manager.flush();   // next line could terminate program

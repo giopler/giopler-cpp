@@ -29,6 +29,7 @@
 
 #include <memory>
 #include <string>
+#include <type_traits>
 
 #include "giopler/counter.hpp"
 
@@ -36,33 +37,39 @@
 namespace giopler::dev {
 
 // -----------------------------------------------------------------------------
-class Function {
+// in Dev mode we only keep track of locations for tracing
+// in Prof mode we also keep track of runtimes
+// we generate and store the event id (UUID) for the function profile
+// this way we can refer to the function instance while it is still running
+// workload is also saved in Dev/trace mode
+class Function final {
  public:
   explicit Function([[maybe_unused]] const double workload = 0,
                     [[maybe_unused]] giopler::source_location source_location = giopler::source_location::current())
-    : _workload{workload},
-      _duration_total{},
-      _duration_children{}
   {
-    if constexpr (g_build_mode == BuildMode::Prof) {
-      _start_time              = now();
-      _event_counters_start    = std::make_unique<Record>(read_event_counters());
-      _event_counters_children = std::make_unique<Record>();
-    }
-
     if constexpr (g_build_mode == BuildMode::Dev || g_build_mode == BuildMode::Prof) {
-      _function_event_id        = get_uuid();
-      _source_location          = std::make_unique<giopler::source_location>(source_location);
-      _old_parent_function_name = g_parent_function_name;
-      _old_function_name        = g_function_name;
-      g_parent_function_name    = g_function_name;
-      g_function_name           = source_location.function_name();
+      _data = std::make_unique<FunctionData>();
 
-      _parent_function_object   = _function_object;
-      _function_object          = this;
+      if constexpr (g_build_mode == BuildMode::Prof) {
+        _data->_start_time                = now();
+        _data->_event_counters_start      = read_event_counters();
+      }
+
+      _data->_stack_depth++;
+      _data->_workload                  = workload;
+      _data->_source_location           = std::make_unique<giopler::source_location>(source_location);
+      _data->_function_event_id         = get_uuid();
+      _data->_old_parent_function_name  = g_parent_function_name;
+      _data->_old_function_name         = g_function_name;
+      g_parent_function_name            = g_function_name;
+      g_function_name                   = source_location.function_name();
+
+      _data->_parent_function_object    = _data->_function_object;
+      _data->_function_object           = this;
 
       std::shared_ptr<Record> record = std::make_shared<Record>(
-          create_message_record(source_location, _function_event_id, "trace"sv, "function_entry"sv, ""sv));
+          create_message_record(source_location, get_uuid(),
+                                "trace"sv, "function_entry"sv, workload, ""sv));
       sink::g_sink_manager.write_record(record);
     }
   }
@@ -70,62 +77,89 @@ class Function {
   ~Function() {
     if constexpr (g_build_mode == BuildMode::Dev) {
       std::shared_ptr<Record> record = std::make_shared<Record>(
-          create_message_record(*_source_location, get_uuid(), "trace"sv, "function_exit"sv, ""sv));
+          create_message_record(*(_data->_source_location), get_uuid(),
+                                "trace"sv, "function_exit"sv, _data->_workload, ""sv));
       sink::g_sink_manager.write_record(record);
     } else if constexpr (g_build_mode == BuildMode::Prof) {
-      std::shared_ptr<Record> record_total = std::make_shared<Record>(
-          create_profile_record(*_source_location, get_uuid(), "profile_linux", _workload));
-      std::shared_ptr<Record> record_self = std::make_shared<Record>(*record_total);   // clone
-      (*record_total)["evt.event"s] = "function_total"s;    // insert() does not overwrite
-      (*record_self)["evt.event"s]  = "function_self"s;     // insert() does not overwrite
+      _data->_duration_total = timestamp_diff(_data->_start_time, now());
+      std::shared_ptr<Record> event_counters_total = std::make_shared<Record>(read_event_counters());
+      subtract_number_record(*event_counters_total, _data->_event_counters_start);
+      event_counters_total->insert({{"prof.duration", _data->_duration_total}});
 
-      _duration_total = timestamp_diff(_start_time, now());
-      Record event_counters_total{read_event_counters()};
-      Record event_counters_self{event_counters_total};   // merge() is a mutating operation
-      subtract_number_record(event_counters_total, *_event_counters_start);
+      std::shared_ptr<Record> record = std::make_shared<Record>(
+          create_profile_record(*(_data->_source_location), "profile_linux",
+                                _data->_function_event_id, "function"s, _data->_workload, event_counters_total));
+      track_child(*event_counters_total);
 
-      track_child(_duration_total, event_counters_total);
-      record_total->merge(event_counters_total);
-      record_total->insert({{"prof.duration", _duration_total}});
-      sink::g_sink_manager.write_record(record_total);
+      std::shared_ptr<Record> event_counters_self = std::make_shared<Record>(*event_counters_total);
+      subtract_number_record(*event_counters_self, _data->_event_counters_children);
+      record->insert({{"prof.self", event_counters_self}});
 
-      subtract_number_record(event_counters_self, *_event_counters_children);
-      record_self->merge(event_counters_self);
-      record_self->insert({{"prof.duration", _duration_total-_duration_children}});
-      sink::g_sink_manager.write_record(record_self);
+      sink::g_sink_manager.write_record(record);
     }
 
     if constexpr (g_build_mode == BuildMode::Dev || g_build_mode == BuildMode::Prof) {
-      g_parent_function_name    = _old_parent_function_name;
-      g_function_name           = _old_function_name;
-      _function_object          = _parent_function_object;
-    }
-  }
-
-  void track_child(const double duration_total, const Record& record_event_counters_total) {
-    if (_parent_function_object) {
-      _parent_function_object->_duration_children += duration_total;
-      add_number_record(*_parent_function_object->_event_counters_children, record_event_counters_total);
+      g_parent_function_name    = _data->_old_parent_function_name;
+      g_function_name           = _data->_old_function_name;
+      _data->_function_object   = _data->_parent_function_object;
+      _data->_stack_depth--;
     }
   }
 
  private:
-  const double _workload;
-  Timestamp _start_time;
-  std::string _function_event_id;
-  double _duration_total;
-  double _duration_children;
+  struct FunctionData {
+    double _workload;
+    Timestamp _start_time;
+    std::string _function_event_id;   // event id for profile
 
-  // use unique pointers to minimize their cost if build mode disables the class
-  std::unique_ptr<giopler::source_location> _source_location;
-  std::string _old_parent_function_name;
-  std::string _old_function_name;
+    double _duration_total = 0;
+    Record _event_counters_start;
+    Record _event_counters_children;
 
-  Function* _parent_function_object;
-  static inline thread_local Function* _function_object;
+    // use unique pointers to minimize their cost if build mode disables the class
+    std::unique_ptr<giopler::source_location> _source_location;
+    std::string _old_parent_function_name;
+    std::string _old_function_name;
 
-  std::unique_ptr<Record> _event_counters_start;
-  std::unique_ptr<Record> _event_counters_children;
+    Function* _parent_function_object;
+    static inline thread_local Function* _function_object = nullptr;
+    static inline thread_local std::uint32_t _stack_depth = 0;
+  };
+
+  // use a data object to help minimize impact when not in Dev or Prof build modes
+  [[no_unique_address]]   // means could be a zero-length variable
+  std::conditional<g_build_mode == BuildMode::Dev || g_build_mode == BuildMode::Prof,
+    std::unique_ptr<FunctionData>, void>::type _data;
+
+  // ---------------------------------------------------------------------------
+  /// subtract from the calling function our counters
+  void track_child(const Record& record_event_counters_total) {
+    if (_data->_parent_function_object) {
+      add_number_record(_data->_parent_function_object->_data->_event_counters_children, record_event_counters_total);
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  /// walk the call stack chain and save the function entry UUIDs
+  // uses _stack_depth to preallocate the vector and to know where to store the values
+  // stack[0]   = thread
+  // stack[max] = current function
+  std::vector<std::string> get_stack() {
+    std::vector<std::string> stack;
+    stack.reserve(_data->_stack_depth+1);   // [0]=thread
+    std::size_t current_stack_frame = _data->_stack_depth;
+    Function* function_object       = this;
+
+    while (function_object) {
+      assert(current_stack_frame);
+      stack[current_stack_frame--] = function_object->_data->_function_event_id;
+      function_object              = function_object->_data->_parent_function_object;
+    }
+
+    assert(current_stack_frame == 0);
+    stack[0] = g_thread.get_event_id();
+    return stack;
+  }
 };
 
 // -----------------------------------------------------------------------------

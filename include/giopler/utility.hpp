@@ -304,7 +304,7 @@ std::string get_uuid()
 {
     static constexpr auto UUID_LEN = 36;   // 5c47ba38-3e2b-48b1-988e-f16921213939
     static const char hex_char[] =
-      {'0', '1', '2', '3', '4', '5', '6', '7',
+      {'0', '1',  '2',  '3',  '4',  '5', '6',  '7',
        '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
     static thread_local pcg                               gen;
     static thread_local std::uniform_int_distribution<> hex_digit(0, 15);

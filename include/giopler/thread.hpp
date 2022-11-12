@@ -35,16 +35,18 @@
 namespace giopler::dev {
 
 // -----------------------------------------------------------------------------
+// we generate and store the event id (UUID) for the thread profile
+// this way we can refer to the thread instance while it is still running
 class Thread
 {
  public:
     Thread([[maybe_unused]] giopler::source_location source_location = giopler::source_location::current())
     {
       if constexpr (g_build_mode == BuildMode::Dev) {
-        _event_id = get_uuid();
+        _thread_event_id = get_uuid();
         _source_location = std::make_unique<giopler::source_location>(source_location);
         std::shared_ptr<Record> record = std::make_shared<Record>(
-            create_message_record(source_location, _event_id, "trace"sv, "thread_entry"sv, ""sv));
+            create_message_record(source_location, get_uuid(), "trace"sv, "thread_entry"sv, 0, ""sv));
         sink::g_sink_manager.write_record(record);
       } else if constexpr (g_build_mode == BuildMode::Prof) {
         _start_time           = now();
@@ -54,31 +56,30 @@ class Thread
     }
 
     std::string_view get_event_id() const {
-      return _event_id;
+      return _thread_event_id;
     }
 
     ~Thread() {
       if constexpr (g_build_mode == BuildMode::Dev) {
         std::shared_ptr<Record> record = std::make_shared<Record>(
-            create_message_record(*_source_location, _event_id, "trace"sv, "thread_exit"sv, ""sv));
+            create_message_record(*_source_location, get_uuid(),
+                                  "trace"sv, "thread_exit"sv, 0, ""sv));
         sink::g_sink_manager.write_record(record);
       } else if constexpr (g_build_mode == BuildMode::Prof) {
-        std::shared_ptr<Record> record_total = std::make_shared<Record>(
-            create_profile_record(*_source_location, _event_id, "profile_linux", 0));
-        record_total->insert({ "evt.event"s, "thread"sv});
-
         const double _duration_total = timestamp_diff(_start_time, now());
-        Record event_counters_total{read_event_counters()};
-        subtract_number_record(event_counters_total, *_event_counters_start);
+        std::shared_ptr<Record> event_counters_total = std::make_shared<Record>(read_event_counters());
+        subtract_number_record(*event_counters_total, *_event_counters_start);
+        event_counters_total->insert({"prof.duration", _duration_total});
 
-        record_total->merge(event_counters_total);
-        record_total->insert({{"prof.duration", _duration_total}});
+        std::shared_ptr<Record> record_total = std::make_shared<Record>(
+            create_profile_record(*_source_location, "profile_linux"sv,
+                                  _thread_event_id, "thread"sv, 0, event_counters_total));
         sink::g_sink_manager.write_record(record_total);
       }
     }
 
  private:
-  std::string _event_id;
+  std::string _thread_event_id;   // event id for thread profile event
   std::unique_ptr<giopler::source_location> _source_location;
   Timestamp _start_time;
   std::unique_ptr<Record> _event_counters_start;

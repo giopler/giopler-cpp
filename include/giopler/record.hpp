@@ -49,78 +49,12 @@ using namespace std::literals;
 namespace giopler {
 
 // -----------------------------------------------------------------------------
-// Data Dictionary:
+class RecordValue;
 
-// these values are constant for the duration of the program run
-// - prog.run_id                  - string    - generated at client; unique to program run (UUID)
-// - prog.start_ts                - timestamp - when program started running
-// - prog.memory_page_size        - integer   - memory page size (bytes)
-// - prog.physical_memory         - integer   - physical memory size (bytes)
-// - prog.total_cpu_cores         - integer   - total number of CPU cores
-// - prog.available_cpu_cores     - integer   - number of available CPU cores (powered-on/plugged-in)
-// - prog.program_name            - string    - system program name
-// - prog.process_id              - integer   - system process id (/proc/sys/kernel/pid_max)
-// - prog.build_mode              - string    - dev, test, prof, qa, prod
-// - prog.compiler                - string    - Gcc, Clang, Microsoft, Intel
-// - prog.platform                - string    - Linux, Windows, Bsd
-// - prog.architecture            - string    - x86_64
-// - prog.host_name               - string    - name of current host
-// - prog.real_username           - string    - logged-in username
-// - prog.effective_username      - string    - username that the process is running under
-
-// these values could change as the program runs
-// - evt.event_id                 - string    - UUID, unique to event
-// - evt.record_type              - string    - program, message, profile_linux
-// - evt.event_category           - string    - contract, dev, prof, test, prod
-// - evt.event                    - string    - uniquely identifies the event
-// - attr.*                       - any       - user-defined attributes
-
-// - loc.file                     - string    - source file name and path
-// - loc.line                     - integer   - line number
-// - loc.function                 - string    - function name and signature
-
-// - trc.function                 - string    - last function traced via Function class
-// - trc.parent_function          - string    - parent (calling) function traced via Function class
-
-// - val.timestamp                - timestamp - when event occurred
-// - val.thread_id                - integer   - system thread id
-// - val.node_id                  - integer   - NUMA node id where thread is currently running
-// - val.cpu_id                   - integer   - CPU core id where thread is currently running
-// - val.available_memory         - integer   - free memory size (bytes)
-
-// - val.message                  - string    - additional event details
-
-// - prof.workload                - real      - user-assigned weight to profiled function calls (same for total and self)
-
-// All of these have two event versions:
-// - function_total               - sum of the function and other functions it calls
-// - function_self                - sum of only the function, excluding other functions called
-
-// - prof.duration                - real      - real (wall clock) duration (secs)
-
-// Linux Performance Counters: (g_build_mode == BuildMode::Prof)
-
-// - prof.sw.cpu_clock            - real      - CPU clock, a high-resolution per-CPU timer. (secs)
-// - prof.sw.task_clock           - real      - clock count specific to the task that is running. (secs)
-// - prof.sw.page_faults          - integer   - number of page faults
-// - prof.sw.context_switches     - integer   - counts context switches
-// - prof.sw.cpu_migrations       - integer   - number of times the process has migrated to a new CPU
-// - prof.sw.page_faults_min      - integer   - number of minor page faults
-// - prof.sw.page_faults_maj      - integer   - number of major page faults. These required disk I/O to handle
-// - prof.sw.alignment_faults     - integer   - counts the number of alignment faults. Zero on x86
-// - prof.sw.emulation_faults     - integer   - counts the number of emulation faults
-
-// - prof.hw.cpu_cycles           - integer   - Total cycles
-// - prof.hw.instructions         - integer   - Retired instructions (i.e., executed)
-
-// - prof.hw.stall_cycles_front   - integer   - Stalled cycles during issue in the frontend
-// - prof.hw.stall_cycles_back    - integer   - Stalled cycles during retirement in the backend
-
-// - prof.hw.branch_instructions  - integer   - Retired branch instructions (i.e., executed)
-// - prof.hw.branch_misses        - integer   - Mispredicted branch instructions
-
-// - prof.hw.cache_references     - integer   - Cache accesses. Usually this indicates Last Level Cache accesses
-// - prof.hw.cache_misses         - integer   - Cache misses. Usually this indicates Last Level Cache misses
+// -----------------------------------------------------------------------------
+/// Data being sent to a sink for processing.
+using Record = std::unordered_map<std::string, RecordValue>;
+using Array  = std::vector<RecordValue>;
 
 // -----------------------------------------------------------------------------
 /// replacement for std::variant; eventually might become a wrapper
@@ -134,7 +68,7 @@ namespace giopler {
 class RecordValue
 {
  public:
-  enum class Type {Empty, Boolean, Integer, Real, String, Timestamp};
+  enum class Type {Empty, Boolean, Integer, Real, String, Timestamp, Record, Array};
 
   [[nodiscard]] Type get_type() const {
     return _record_value_type;
@@ -160,6 +94,8 @@ class RecordValue
         case Type::Real:        return _real_value      == record_value._real_value;
         case Type::String:      return _string_value    == record_value._string_value;
         case Type::Timestamp:   return _timestamp_value == record_value._timestamp_value;
+        case Type::Record:      return _record_value    == record_value._record_value;
+        case Type::Array:       return _array_value     == record_value._array_value;
       }
     } else {
       return false;
@@ -251,6 +187,35 @@ class RecordValue
     _timestamp_value = timestamp_value;
   }
 
+  // ---------------------------------------------------------------------------
+  RecordValue(std::shared_ptr<giopler::Record> record_value)   // NOLINT(google-explicit-constructor)
+  : _record_value_type(Type::Record), _record_value(record_value) { }
+
+  [[nodiscard]] std::shared_ptr<giopler::Record> get_record() const {
+    assert(_record_value_type == Type::Record);
+    return _record_value;
+  }
+
+  void set_record(const std::shared_ptr<giopler::Record> record_value) {
+    assert(_record_value_type == Type::Record);
+    _record_value = record_value;
+  }
+
+  // ---------------------------------------------------------------------------
+  RecordValue(std::shared_ptr<giopler::Array> array_value)   // NOLINT(google-explicit-constructor)
+  : _record_value_type(Type::Array), _array_value(array_value) { }
+
+  [[nodiscard]] std::shared_ptr<giopler::Array> get_array() const {
+    assert(_record_value_type == Type::Array);
+    return _array_value;
+  }
+
+  void set_array(const std::shared_ptr<giopler::Array> array_value) {
+    assert(_record_value_type == Type::Array);
+    _array_value = array_value;
+  }
+
+  // ---------------------------------------------------------------------------
  private:
   friend struct std::hash<giopler::RecordValue>;
   Type _record_value_type;
@@ -259,152 +224,71 @@ class RecordValue
   double _real_value{};
   std::string _string_value{};
   Timestamp _timestamp_value{};
+  std::shared_ptr<giopler::Record> _record_value;
+  std::shared_ptr<giopler::Array>  _array_value;
 };
 
 // -----------------------------------------------------------------------------
-/// contents of the record catalog
-// key type, key category, scale factor
-using RecordCatalogInfo = std::tuple<RecordValue::Type, std::string, double>;
-
-// -----------------------------------------------------------------------------
-/// converting nanoseconds to seconds
-// if scale factor != 1, then result type is double
-constexpr static inline double ns_to_sec = 0.000'000'001;
-
-// -----------------------------------------------------------------------------
-/// catalog of valid keys and values for records
-// [key name] = key info
-using RecordCatalog = std::unordered_map<std::string, RecordCatalogInfo>;
-
-// -----------------------------------------------------------------------------
-/// Data being sent to a sink for processing.
-using Record = std::unordered_map<std::string, RecordValue>;
-
-// -----------------------------------------------------------------------------
-/// initializer list for Record values
-using RecordInit = std::initializer_list<Record::value_type>;
-
-// -----------------------------------------------------------------------------
 /// catalog of all valid Record keys
-const RecordCatalog& get_record_catalog() {
-  static const RecordCatalog record_catalog{
-      {"prog.run_id"s,                        {RecordValue::Type::String,     "prog"s, 1}},
-      {"prog.start_ts"s,                      {RecordValue::Type::Timestamp,  "prog"s, 1}},
-      {"prog.memory_page_size"s,              {RecordValue::Type::Integer,    "prog"s, 1}},
-      {"prog.physical_memory"s,               {RecordValue::Type::Integer,    "prog"s, 1}},
-      {"prog.total_cpu_cores"s,               {RecordValue::Type::Integer,    "prog"s, 1}},
-      {"prog.available_cpu_cores"s,           {RecordValue::Type::Integer,    "prog"s, 1}},
-      {"prog.program_name"s,                  {RecordValue::Type::String,     "prog"s, 1}},
-      {"prog.process_id"s,                    {RecordValue::Type::Integer,    "prog"s, 1}},
-      {"prog.build_mode"s,                    {RecordValue::Type::String,     "prog"s, 1}},
-
-      {"evt.event_id"s,                       {RecordValue::Type::String,     "evt"s, 1}},
-      {"evt.record_type"s,                    {RecordValue::Type::String,     "evt"s, 1}},
-      {"evt.event_category"s,                 {RecordValue::Type::String,     "evt"s, 1}},
-      {"evt.event"s,                          {RecordValue::Type::String,     "evt"s, 1}},
-
-      {"loc.file"s,                           {RecordValue::Type::String,     "loc"s, 1}},
-      {"loc.line"s,                           {RecordValue::Type::Integer,    "loc"s, 1}},
-      {"loc.function"s,                       {RecordValue::Type::String,     "loc"s, 1}},
-
-      {"trc.function"s,                       {RecordValue::Type::String,     "trc"s, 1}},
-      {"trc.parent_function"s,                {RecordValue::Type::String,     "trc"s, 1}},
-
-      {"val.timestamp"s,                      {RecordValue::Type::Timestamp,  "val"s, 1}},
-      {"val.thread_id"s,                      {RecordValue::Type::Integer,    "val"s, 1}},
-      {"val.cpu_id"s,                         {RecordValue::Type::Integer,    "val"s, 1}},
-      {"val.available_memory"s,               {RecordValue::Type::Integer,    "val"s, 1}},
-      {"val.message"s,                        {RecordValue::Type::String,     "val"s, 1}},
-
-      {"prof.workload"s,                      {RecordValue::Type::Real,       "prof.all"s, 1}},
-      {"prof.duration"s,                      {RecordValue::Type::Real,       "prof.all"s, ns_to_sec}},
-
-      {"prof.sw.cpu_clock"s,                  {RecordValue::Type::Real,       "prof.linux.sw"s, ns_to_sec}},
-      {"prof.sw.task_clock"s,                 {RecordValue::Type::Real,       "prof.linux.sw"s, ns_to_sec}},
-      {"prof.sw.page_faults"s,                {RecordValue::Type::Integer,    "prof.linux.sw"s, 1}},
-      {"prof.sw.context_switches"s,           {RecordValue::Type::Integer,    "prof.linux.sw"s, 1}},
-      {"prof.sw.cpu_migrations"s,             {RecordValue::Type::Integer,    "prof.linux.sw"s, 1}},
-      {"prof.sw.page_faults_min"s,            {RecordValue::Type::Integer,    "prof.linux.sw"s, 1}},
-      {"prof.sw.page_faults_maj"s,            {RecordValue::Type::Integer,    "prof.linux.sw"s, 1}},
-      {"prof.sw.alignment_faults"s,           {RecordValue::Type::Integer,    "prof.linux.sw"s, 1}},
-      {"prof.sw.emulation_faults"s,           {RecordValue::Type::Integer,    "prof.linux.sw"s, 1}},
-
-      {"prof.hw.cpu_cycles"s,                 {RecordValue::Type::Integer,    "prof.linux.hw"s, 1}},
-      {"prof.hw.instructions"s,               {RecordValue::Type::Integer,    "prof.linux.hw"s, 1}},
-
-      {"prof.hw.stall_cycles_front"s,         {RecordValue::Type::Integer,    "prof.linux.hw"s, 1}},
-      {"prof.hw.stall_cycles_back"s,          {RecordValue::Type::Integer,    "prof.linux.hw"s, 1}},
-
-      {"prof.hw.branch_instructions"s,        {RecordValue::Type::Integer,    "prof.linux.hw"s, 1}},
-      {"prof.hw.branch_misses"s,              {RecordValue::Type::Integer,    "prof.linux.hw"s, 1}},
-
-      {"prof.hw.cache_references"s,           {RecordValue::Type::Integer,    "prof.linux.hw"s, 1}},
-      {"prof.hw.cache_misses"s,               {RecordValue::Type::Integer,    "prof.linux.hw"s, 1}}
+// the values are already sorted
+const std::vector<std::string>& get_record_catalog() {
+  static const std::vector<std::string> record_catalog {
+      "evt.event"s,
+      "evt.event_category"s,
+      "evt.event_id"s,
+      "evt.record_type"s,
+      "loc.file"s,
+      "loc.function"s,
+      "loc.line"s,
+      "prof.duration"s,
+      "prof.hw.branch_instructions"s,
+      "prof.hw.branch_misses"s,
+      "prof.hw.cache_misses"s
+      "prof.hw.cache_references"s,
+      "prof.hw.cpu_cycles"s,
+      "prof.hw.instructions"s,
+      "prof.hw.stall_cycles_back"s,
+      "prof.hw.stall_cycles_front"s,
+      "prof.sw.alignment_faults"s,
+      "prof.sw.context_switches"s,
+      "prof.sw.cpu_clock"s,
+      "prof.sw.cpu_migrations"s,
+      "prof.sw.emulation_faults"s,
+      "prof.sw.page_faults"s,
+      "prof.sw.page_faults_maj"s,
+      "prof.sw.page_faults_min"s,
+      "prof.sw.task_clock"s,
+      "prof.workload"s,
+      "prog.available_cpu_cores"s,
+      "prog.build_mode"s,
+      "prog.memory_page_size"s,
+      "prog.physical_memory"s,
+      "prog.process_id"s,
+      "prog.program_name"s,
+      "prog.run_id"s,
+      "prog.start_ts"s,
+      "prog.total_cpu_cores"s,
+      "trc.function"s,
+      "trc.parent_function"s,
+      "val.available_memory"s,
+      "val.cpu_id"s,
+      "val.message"s,
+      "val.thread_id"s,
+      "val.timestamp"s
   };
 
   return record_catalog;
 }
 
 // -----------------------------------------------------------------------------
-/// used to validate the Record keys
-bool is_valid_record_key(const std::string_view key) {
-  if (key.starts_with("attr.")) {
-    return true;
-  }
-
-  const RecordCatalog& record_catalog = get_record_catalog();
-  return record_catalog.contains(std::string{key});
-}
-
-// -----------------------------------------------------------------------------
 /// return a sorted vector of the keys
-// it is probably faster to copy then sort the keys rather than insert while sorting
 std::vector<std::string> get_sorted_record_keys() {
-  const RecordCatalog& record_catalog = get_record_catalog();
-  std::vector<std::string> keys;
-  keys.reserve(record_catalog.size());
-
-  for (const auto& [k, v] : record_catalog) {
-    keys.emplace_back(k);
-  }
-
-  std::sort(std::begin(keys), std::end(keys));
-  return keys;
+  return get_record_catalog();
 }
 
 // -----------------------------------------------------------------------------
-/// return a sorted vector of the keys that are in the given categories
-std::vector<std::string> get_keys_matching_categories(const std::set<std::string>& categories) {
-  const std::vector<std::string> keys{get_sorted_record_keys()};
-  std::vector<std::string> result_keys;
-  for (const auto& key : keys) {
-    if (categories.contains(key)) {
-      result_keys.emplace_back(key);
-    }
-  }
-  return result_keys;
-}
-
-// -----------------------------------------------------------------------------
-/// get the RecordValue Type for the given record key name
-RecordValue::Type get_record_type(std::string_view key) {
-  const RecordCatalog& record_catalog = get_record_catalog();
-  return get<0>(record_catalog.at(std::string(key)));
-}
-
-// -----------------------------------------------------------------------------
-/// get the category for the given record key name
-std::string get_record_category(std::string_view key) {
-  const RecordCatalog& record_catalog = get_record_catalog();
-  return get<1>(record_catalog.at(std::string(key)));
-}
-
-// -----------------------------------------------------------------------------
-/// get the scale Type for the given record key name
-double get_record_scale(std::string_view key) {
-  const RecordCatalog& record_catalog = get_record_catalog();
-  return get<2>(record_catalog.at(std::string(key)));
-}
+/// initializer list for Record values
+using RecordInit = std::initializer_list<Record::value_type>;
 
 // -----------------------------------------------------------------------------
 /// convert a source_location into a string
@@ -419,54 +303,131 @@ Record source_location_to_record(const source_location& source_location)
 }
 
 // -----------------------------------------------------------------------------
+void record_value_to_json(const RecordValue& value, std::stringstream& buffer)
+{
+    switch (value.get_type()) {
+      case RecordValue::Type::Boolean: {
+        buffer << format("{}", value.get_boolean());
+        break;
+      }
+
+      case RecordValue::Type::Integer: {
+        buffer << format("{}", value.get_integer());
+        break;
+      }
+
+      case RecordValue::Type::Real: {
+        buffer << format("{}", value.get_real());
+        break;
+      }
+
+      case RecordValue::Type::String: {
+        buffer << format("\"{}\"", value.get_string());
+        break;
+      }
+
+      case RecordValue::Type::Timestamp: {
+        buffer << format("\"{}\"", format_timestamp(value.get_timestamp()));
+        break;
+      }
+
+      case RecordValue::Type::Record: {
+        buffer.put('{');
+        bool first_field = true;
+
+        for (const auto& [rec_field, rec_value] : *(value.get_record())) {
+          if (first_field) {
+            first_field = false;
+          } else {
+            buffer.put(',');
+          }
+
+          buffer << format("\"{}\":", rec_field);
+          record_value_to_json(rec_value, buffer);
+        }
+
+        buffer << "}\n";
+        break;
+      }
+
+      case RecordValue::Type::Array: {
+        buffer.put('[');
+        bool first_field = true;
+
+        for (const auto& array_value : *(value.get_array())) {
+          if (first_field) {
+            first_field = false;
+          } else {
+            buffer.put(',');
+          }
+
+          record_value_to_json(array_value, buffer);
+        }
+
+        buffer << "]\n";
+        break;
+      }
+
+      case RecordValue::Type::Empty: {
+        buffer << "null";
+        break;
+      }
+    }
+}
+
+// -----------------------------------------------------------------------------
 /// convert a Record to a JSON string
-std::string record_to_json(const std::vector<std::string>& fields, std::shared_ptr<Record> record)
+std::string record_to_json(std::shared_ptr<Record> record)
+{
+    std::stringstream buffer;
+    record_value_to_json(RecordValue(record), buffer);
+    return buffer.str();
+}
+
+// -----------------------------------------------------------------------------
+/// convert a Record to a CSV string
+std::string record_to_csv(const std::vector<std::string>& fields, std::shared_ptr<Record> record,
+                          std::string_view _separator = ","sv, std::string_view _string_quote = "\""sv)
 {
     std::stringstream buffer;
     bool first_field = true;
-    buffer.put('{');
-
     for (const auto& field : fields) {
-      if (!record->contains(field)) {
-        continue;   // JSON skips missing fields from the record
-      }
-      const RecordValue value = record->at(field);
+      // do not print anything for missing field values
+      const RecordValue value = record->contains(field) ? record->at(field) : RecordValue();
 
       if (first_field) {
         first_field = false;
       } else {
-        buffer.put(',');
+        buffer << _separator;
       }
 
       switch (value.get_type()) {
         case RecordValue::Type::Boolean: {
-          buffer << format("\"{}\":{}", field, value.get_boolean());
+          buffer << format("{}", value.get_boolean());
           break;
         }
 
         case RecordValue::Type::Integer: {
-          const double scale = get_record_scale(field);
-          if (scale == 1) {
-            buffer << format("\"{}\":{}", field, value.get_integer());
-          } else {
-            buffer << format("\"{}\":{}", field, static_cast<double>(value.get_integer())*scale);
-          }
+          buffer << format("{}", value.get_integer());
           break;
         }
 
         case RecordValue::Type::Real: {
-          const double scale = get_record_scale(field);
-          buffer << format("\"{}\":{}", field, value.get_real()*scale);
+          buffer << format("{}", value.get_real());
           break;
         }
 
         case RecordValue::Type::String: {
-          buffer << format("\"{}\":\"{}\"", field, value.get_string());
+          buffer << format("{0}{1}{0}", _string_quote, value.get_string());
           break;
         }
 
         case RecordValue::Type::Timestamp: {
-          buffer << format("\"{}\":\"{}\"", field, format_timestamp(value.get_timestamp()));
+          buffer << format("{0}{1}{0}", _string_quote, format_timestamp(value.get_timestamp()));
+          break;
+        }
+
+        case RecordValue::Type::Empty: {
           break;
         }
 
@@ -474,7 +435,7 @@ std::string record_to_json(const std::vector<std::string>& fields, std::shared_p
       }
     }
 
-    buffer << "}\n";
+    buffer.put('\n');
     return buffer.str();
 }
 
@@ -561,6 +522,7 @@ Record create_message_record(const source_location& source_location,
                              std::string_view event_id,
                              std::string_view event_category,
                              std::string_view event,
+                             const double workload,
                              std::string_view message)
 {
   Record record{create_location_record(source_location)};
@@ -571,6 +533,7 @@ Record create_message_record(const source_location& source_location,
       {"evt.event_category"s,     event_category},
       {"evt.event"s,              event},
 
+      {"val.workload"s,            workload},
       {"val.message"s,            message}
   });
 
@@ -583,7 +546,9 @@ Record create_message_record(const source_location& source_location,
 Record create_profile_record(const source_location& source_location,
                              std::string_view record_type,
                              std::string_view event_id,
-                             double workload)
+                             std::string_view event,
+                             const double workload,
+                             std::shared_ptr<Record> total)
 {
   Record record{create_location_record(source_location)};
 
@@ -591,7 +556,9 @@ Record create_profile_record(const source_location& source_location,
       {"evt.record_type"s,        record_type},
       {"evt.event_id"s,           event_id},
       {"evt.event_category"s,     "profile"sv},
-      {"prof.workload"s,          workload}
+      {"evt.event"s,              event},
+      {"val.workload"s,           workload},
+      {"prof.total"s,             total}
   });
 
   record.merge(g_attributes);

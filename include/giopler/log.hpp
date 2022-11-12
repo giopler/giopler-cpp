@@ -45,7 +45,7 @@ void warning(const std::string_view message,
     return;
   } else {
     std::shared_ptr<Record> record = std::make_shared<Record>(
-        create_message_record(source_location, get_uuid(), "log", "warning", message));
+        create_message_record(source_location, get_uuid(), "log", "warning", 0, message));
     sink::g_sink_manager.write_record(record);
   }
 }
@@ -78,7 +78,7 @@ void error(const std::string_view message,
     return;
   } else {
     std::shared_ptr<Record> record = std::make_shared<Record>(
-        create_message_record(source_location, get_uuid(), "log", "error", message));
+        create_message_record(source_location, get_uuid(), "log", "error", 0, message));
     record->insert({{"val.message", message}});
     sink::g_sink_manager.write_record(record);
   }
@@ -106,7 +106,7 @@ void message(const std::string_view message,
     return;
   } else {
     std::shared_ptr<Record> record = std::make_shared<Record>(
-        create_message_record(source_location, get_uuid(), "log", "message", message));
+        create_message_record(source_location, get_uuid(), "log", "message", 0, message));
     record->insert({{"val.message", message}});
     sink::g_sink_manager.write_record(record);
   }

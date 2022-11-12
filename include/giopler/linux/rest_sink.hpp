@@ -109,7 +109,7 @@ class Rest : public Sink
 
     const std::lock_guard<std::mutex> lock{_mutex};
     const std::string path{std::string{SERVER_PATH} + record->at("evt.record_type").get_string()};
-    post(path, record_to_json(_fields, record));
+    post(path, record_to_json(record));
     return true;   // record was not filtered and it was written out
   }
 
@@ -157,7 +157,7 @@ class Rest : public Sink
       _bio = BIO_new_ssl_connect(_ssl_ctx);
       assert(_bio);
 
-      BIO_set_callback(_bio, BIO_debug_callback);   // ********************************
+      //BIO_set_callback(_bio, BIO_debug_callback);   // ********************************
 
       const long bio_get_ssl_status = BIO_get_ssl(_bio, &_ssl);
       assert(bio_get_ssl_status);
