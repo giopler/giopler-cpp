@@ -289,8 +289,8 @@ std::vector<std::string> get_sorted_record_keys() {
 }
 
 // -----------------------------------------------------------------------------
-/// User-defined global attributes
-// the attribute names begin with "attr."
+/// User-defined attributes
+// these are automatically included with events sent
 // we update a copy of the parent object, so it contains all active attributes
 // this way we avoid a potential long recursive loop on every data request
 class Attributes
@@ -303,8 +303,7 @@ public:
     _attributes = this;
 
     for (const auto& [key, value] : attribute_init) {
-      const std::string attr_key = key.starts_with("attr."sv) ? key : ("attr." + key);
-      (*_data)[attr_key] = to_json_string(value);
+      (*_data)[key] = to_json_string(value);
     }
   }
 
@@ -340,7 +339,7 @@ private:
         return format("\"{}\"", value.get_string());
       }
 
-      case RecordValue::Type::Timestamp: {
+      case RecordValue::Type::Timestamp: {   // not sure if this is needed
         return format("\"{}\"", format_timestamp(value.get_timestamp()));
       }
 

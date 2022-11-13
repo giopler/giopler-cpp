@@ -144,8 +144,8 @@ class Function final {
   // uses _stack_depth to preallocate the vector and to know where to store the values
   // stack[0]   = thread
   // stack[max] = current function
-  std::vector<std::string> get_stack() {
-    std::vector<std::string> stack;
+  giopler::Array get_stack() {
+    giopler::Array stack;
     stack.reserve(_data->_stack_depth+1);   // [0]=thread
     std::size_t current_stack_frame = _data->_stack_depth;
     Function* function_object       = this;
