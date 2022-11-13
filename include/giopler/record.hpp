@@ -53,8 +53,10 @@ class RecordValue;
 
 // -----------------------------------------------------------------------------
 /// Data being sent to a sink for processing.
-using Record = std::unordered_map<std::string, RecordValue>;
-using Array  = std::vector<RecordValue>;
+// Important: Record objects should NOT be modified after they are shared.
+using Record          = std::unordered_map<std::string, RecordValue>;
+using RecordInitList  = std::initializer_list<Record::value_type>;
+using Array           = std::vector<RecordValue>;
 
 // -----------------------------------------------------------------------------
 /// replacement for std::variant; eventually might become a wrapper
@@ -287,8 +289,75 @@ std::vector<std::string> get_sorted_record_keys() {
 }
 
 // -----------------------------------------------------------------------------
-/// initializer list for Record values
-using RecordInit = std::initializer_list<Record::value_type>;
+/// User-defined global attributes
+// the attribute names begin with "attr."
+// we update a copy of the parent object, so it contains all active attributes
+// this way we avoid a potential long recursive loop on every data request
+class Attributes
+{
+public:
+  Attributes(const RecordInitList& attribute_init)
+  : _parent_attributes{_attributes},
+    _data{_attributes ? _attributes->_data : std::make_shared<Record>()}
+  {
+    _attributes = this;
+
+    for (const auto& [key, value] : attribute_init) {
+      const std::string attr_key = key.starts_with("attr."sv) ? key : ("attr." + key);
+      (*_data)[attr_key] = to_json_string(value);
+    }
+  }
+
+  ~Attributes() {
+      _attributes = _parent_attributes;
+  }
+
+  static std::shared_ptr<giopler::Record> get_attributes() {
+    return _attributes ? _attributes->_data : std::make_shared<Record>();
+  }
+
+private:
+  static inline thread_local Attributes* _attributes = nullptr;
+  Attributes* _parent_attributes;
+  std::shared_ptr<giopler::Record> _data;
+
+  /// force the attribute value to be a JSON string
+  static std::string to_json_string(const RecordValue& value) {
+    switch (value.get_type()) {
+      case RecordValue::Type::Boolean: {
+        return format("\"{}\"", value.get_boolean());
+      }
+
+      case RecordValue::Type::Integer: {
+        return format("\"{}\"", value.get_integer());
+      }
+
+      case RecordValue::Type::Real: {
+        return format("\"{}\"", value.get_real());
+      }
+
+      case RecordValue::Type::String: {
+        return format("\"{}\"", value.get_string());
+      }
+
+      case RecordValue::Type::Timestamp: {
+        return format("\"{}\"", format_timestamp(value.get_timestamp()));
+      }
+
+      case RecordValue::Type::Record: {
+        assert(false);
+      }
+
+      case RecordValue::Type::Array: {
+        assert(false);
+      }
+
+      case RecordValue::Type::Empty: {
+        return "\"null\"";
+      }
+    }
+  }
+};
 
 // -----------------------------------------------------------------------------
 /// convert a source_location into a string
@@ -445,31 +514,6 @@ static inline thread_local std::string g_parent_function_name;
 static inline thread_local std::string g_function_name;
 
 // -----------------------------------------------------------------------------
-static inline thread_local Record g_attributes;
-
-// -----------------------------------------------------------------------------
-/// User-defined global attributes
-// the attribute names begin with "attr."
-// we update a copy of the parent object, so it contains all active attributes
-class Attributes
-{
-public:
-    Attributes(const RecordInit& attribute_init)
-    : _parent_attribute_map{g_attributes} {
-        for (const auto& [k, v] : attribute_init) {
-            g_attributes["attr." + k] = v;
-        }
-    }
-
-    ~Attributes() {
-        g_attributes = _parent_attribute_map;
-    }
-
-private:
-    Record _parent_attribute_map;
-};
-
-// -----------------------------------------------------------------------------
 /// read program-wide variables
 // these values are constant per program run
 Record create_program_record() {
@@ -533,11 +577,11 @@ Record create_message_record(const source_location& source_location,
       {"evt.event_category"s,     event_category},
       {"evt.event"s,              event},
 
-      {"val.workload"s,            workload},
+      {"val.attributes"s,         Attributes::get_attributes()},
+      {"val.workload"s,           workload},
       {"val.message"s,            message}
   });
 
-  record.merge(g_attributes);
   return record;
 }
 
@@ -557,11 +601,12 @@ Record create_profile_record(const source_location& source_location,
       {"evt.event_id"s,           event_id},
       {"evt.event_category"s,     "profile"sv},
       {"evt.event"s,              event},
+
+      {"val.attributes"s,         Attributes::get_attributes()},
       {"val.workload"s,           workload},
       {"prof.total"s,             total}
   });
 
-  record.merge(g_attributes);
   return record;
 }
 
