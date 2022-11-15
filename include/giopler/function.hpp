@@ -27,6 +27,7 @@
 #error C++20 or newer support required to use this header-only library.
 #endif
 
+#include <cstddef>
 #include <memory>
 #include <string>
 #include <type_traits>
@@ -174,9 +175,7 @@ class Program final
   };
 
   // use a data object to help minimize impact when not in Dev or Prof build modes
-  [[no_unique_address]]   // means could be a zero-length variable
-  std::conditional<g_build_mode != BuildMode::Off,
-    std::unique_ptr<ProgramData>, void>::type _data;
+  std::unique_ptr<ProgramData> _data;
 };
 
 // -----------------------------------------------------------------------------
@@ -237,9 +236,7 @@ class Thread final
   };
 
   // use a data object to help minimize impact when not in Dev or Prof build modes
-  [[no_unique_address]]   // means could be a zero-length variable
-  std::conditional<g_build_mode != BuildMode::Off,
-    std::unique_ptr<ThreadData>, void>::type _data;
+  std::unique_ptr<ThreadData> _data;
 };
 
 // -----------------------------------------------------------------------------
@@ -310,9 +307,7 @@ class Function final
   };
 
   // use a data object to help minimize impact when not in Dev or Prof build modes
-  [[no_unique_address]]   // means could be a zero-length variable
-  std::conditional<g_build_mode != BuildMode::Off,
-    std::unique_ptr<FunctionData>, void>::type _data;
+  std::unique_ptr<FunctionData> _data;
 };
 
 // -----------------------------------------------------------------------------
