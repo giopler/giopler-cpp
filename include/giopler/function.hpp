@@ -20,8 +20,8 @@
 // SOFTWARE.
 
 #pragma once
-#ifndef GIOPPLER_PROFILE_HPP
-#define GIOPPLER_PROFILE_HPP
+#ifndef GIOPLER_FUNCTION_HPP
+#define GIOPLER_FUNCTION_HPP
 
 #if __cplusplus < 202002L
 #error C++20 or newer support required to use this header-only library.
@@ -37,133 +37,286 @@
 namespace giopler::dev {
 
 // -----------------------------------------------------------------------------
+/// keeps track of nested Function instances
+// event_id is the UUID for the exit event of the Function
+// this is an internal implementation detail of the Function class
+class Trace final
+{
+ public:
+  explicit Trace(std::string_view event_id)
+  : _event_id{event_id}
+  {
+    _stack_depth++;
+    _parent_trace_object  = _trace_object;
+    _trace_object         = this;
+  }
+
+  ~Trace() {
+    _trace_object = _parent_trace_object;
+    _stack_depth--;
+  }
+
+  /// generates the JSON compatible function call stack
+  // [0] = program, [1] = thread
+  // [<program event id>, <thread event id>, <function event id>, ...]
+  std::shared_ptr<giopler::Array> get_stack_array() {
+    std::shared_ptr<giopler::Array> stack;
+    stack->reserve(_stack_depth);
+    std::size_t current_stack_frame = _stack_depth-1;
+    Trace* trace_object             = this;
+
+    while (trace_object) {
+      (*stack)[current_stack_frame--] = trace_object->_event_id;
+      trace_object                    = trace_object->_parent_trace_object;
+    }
+
+    return stack;
+  }
+
+ private:
+  static inline thread_local Trace* _trace_object = nullptr;
+  static inline thread_local std::uint32_t _stack_depth   = 0;
+  Trace* _parent_trace_object;
+  std::string _event_id;
+};
+
+// -----------------------------------------------------------------------------
+/// keeps track of the profiling performance counters for Function
+// this is an internal implementation detail of the Function class
+class Profile final
+{
+ public:
+  explicit Profile() {
+    Timestamp start_time  = now();
+    _event_counters_start = std::make_shared<Record>(read_event_counters());
+    _event_counters_start->insert({{"prof.duration"s, to_nanoseconds(start_time) }});
+
+    _parent_profile_object  = _profile_object;
+    _profile_object         = this;
+  }
+
+  ~Profile() {
+    _profile_object = _parent_profile_object;
+  }
+
+  std::shared_ptr<Record> get_total_counters_record() {
+    stop_counters();
+    return event_counters_total;
+  }
+
+  std::shared_ptr<Record> get_self_counters_record() {
+    stop_counters();
+    return event_counters_self;
+  }
+
+ private:
+  bool _frozen = false;
+  Profile* _parent_profile_object;
+  static inline thread_local Profile* _profile_object = nullptr;
+
+  std::shared_ptr<Record> _event_counters_start;
+  std::shared_ptr<Record> _event_counters_children;
+
+  std::shared_ptr<Record> event_counters_total;
+  std::shared_ptr<Record> event_counters_self;
+
+  void stop_counters() {
+    if (_frozen)   return;
+    _frozen = true;
+
+    Timestamp end_time = now();
+    event_counters_total = std::make_shared<Record>(read_event_counters());
+    event_counters_total->insert({{"prof.duration"s, to_nanoseconds(end_time) }});
+    subtract_number_record(*event_counters_total, *_event_counters_start);
+
+    if (_parent_profile_object) {
+      add_number_record(*(_parent_profile_object->_event_counters_children), *event_counters_total);
+    }
+
+    (*event_counters_total)["prof.duration"s] = ns_to_sec((*event_counters_total)["prof.duration"s].get_integer());
+    event_counters_self = std::make_shared<Record>(*event_counters_total);
+    subtract_number_record(*event_counters_self, *_event_counters_children);
+  }
+};
+
+// -----------------------------------------------------------------------------
+/// singleton instance for program-wide data
+// collects the initial system information
+class Program final
+{
+ public:
+    explicit Program([[maybe_unused]] giopler::source_location source_location = giopler::source_location::current())
+    {
+      if constexpr (g_build_mode != BuildMode::Off) {
+        _data = std::make_unique<ProgramData>();
+
+        _data->_source_location = std::make_unique<giopler::source_location>(source_location);
+
+        std::shared_ptr<Record> entry_record =
+            get_event_record(source_location, get_uuid(), "trace"sv, "program_entry"sv);
+        entry_record->insert({{"program"s, get_program_record()}});
+        sink::g_sink_manager.write_record(entry_record);
+      }
+    }
+
+    ~Program() {
+      if constexpr (g_build_mode != BuildMode::Off) {
+        std::shared_ptr<Record> exit_record =
+            get_event_record(*(_data->_source_location), get_uuid(), "trace"sv, "program_exit"sv);
+
+        sink::g_sink_manager.write_record(exit_record);
+      }
+    }
+
+ private:
+  struct ProgramData {
+      std::unique_ptr<giopler::source_location> _source_location;
+  };
+
+  // use a data object to help minimize impact when not in Dev or Prof build modes
+  [[no_unique_address]]   // means could be a zero-length variable
+  std::conditional<g_build_mode != BuildMode::Off,
+    std::unique_ptr<ProgramData>, void>::type _data;
+};
+
+// -----------------------------------------------------------------------------
+static inline Program g_program;
+
+// -----------------------------------------------------------------------------
+/// one instance per thread
+// collects the initial system information
+class Thread final
+{
+ public:
+    explicit Thread([[maybe_unused]] giopler::source_location source_location = giopler::source_location::current())
+    {
+      if constexpr (g_build_mode != BuildMode::Off) {
+        _data = std::make_unique<ThreadData>();
+
+        if constexpr (g_build_mode == BuildMode::Prof) {
+          _data->_profile = std::make_unique<Profile>();
+        }
+
+        _data->_source_location = std::make_unique<giopler::source_location>(source_location);
+        _data->_exit_event_id = get_uuid();
+
+        if constexpr (g_build_mode == BuildMode::Dev || g_build_mode == BuildMode::Prof) {
+          _data->_trace = std::make_unique<Trace>(_data->_exit_event_id);
+        }
+
+        std::shared_ptr<Record> entry_record =
+            get_event_record(source_location, get_uuid(), "trace"sv, "thread_entry"sv);
+        sink::g_sink_manager.write_record(entry_record);
+      }
+    }
+
+    ~Thread() {
+      if constexpr (g_build_mode != BuildMode::Off) {
+        std::shared_ptr<Record> exit_record =
+            get_event_record(*(_data->_source_location), get_uuid(), "trace"sv, "thread_exit"sv);
+
+        if constexpr (g_build_mode == BuildMode::Dev || g_build_mode == BuildMode::Prof) {
+          exit_record->insert({{"stack"s, _data->_trace->get_stack_array()}});
+        }
+
+        if constexpr (g_build_mode == BuildMode::Prof) {
+          exit_record->insert({{"prof_linux.total"s, _data->_profile->get_total_counters_record()}});
+          exit_record->insert({{"prof_linux.self"s,  _data->_profile->get_self_counters_record()}});
+        }
+
+        sink::g_sink_manager.write_record(exit_record);
+      }
+    }
+
+ private:
+  struct ThreadData {
+      std::unique_ptr<giopler::source_location> _source_location;
+      std::string _exit_event_id;
+      std::unique_ptr<Trace> _trace;
+      std::unique_ptr<Profile> _profile;
+  };
+
+  // use a data object to help minimize impact when not in Dev or Prof build modes
+  [[no_unique_address]]   // means could be a zero-length variable
+  std::conditional<g_build_mode != BuildMode::Off,
+    std::unique_ptr<ThreadData>, void>::type _data;
+};
+
+// -----------------------------------------------------------------------------
+/// keep track of the lifetime of each thread for tracing and profiling purposes
+// depends on the counters declared static inline in linux/counters.hpp
+// Note: static initialization order fiasco does not apply when the variables are also inline
+static inline thread_local Thread g_thread;
+
+// -----------------------------------------------------------------------------
 // in Dev mode we only keep track of locations for tracing
 // in Prof mode we also keep track of runtimes
 // we generate and store the event id (UUID) for the function profile
 // this way we can refer to the function instance while it is still running
 // workload is also saved in Dev/trace mode
-class Function final {
+class Function final
+{
  public:
-  explicit Function([[maybe_unused]] const double workload = 0,
-                    [[maybe_unused]] giopler::source_location source_location = giopler::source_location::current())
-  {
-    if constexpr (g_build_mode == BuildMode::Dev || g_build_mode == BuildMode::Prof) {
-      _data = std::make_unique<FunctionData>();
+    explicit Function([[maybe_unused]] const double workload = 0,
+                      [[maybe_unused]] giopler::source_location source_location = giopler::source_location::current())
+    {
+      if constexpr (g_build_mode != BuildMode::Off) {
+        _data = std::make_unique<FunctionData>();
 
-      if constexpr (g_build_mode == BuildMode::Prof) {
-        _data->_start_time                = now();
-        _data->_event_counters_start      = read_event_counters();
+        if constexpr (g_build_mode == BuildMode::Prof) {
+          _data->_profile = std::make_unique<Profile>();
+        }
+
+        _data->_source_location = std::make_unique<giopler::source_location>(source_location);
+        _data->_workload        = workload;
+        _data->_exit_event_id   = get_uuid();
+
+        if constexpr (g_build_mode == BuildMode::Dev || g_build_mode == BuildMode::Prof) {
+          _data->_trace = std::make_unique<Trace>(_data->_exit_event_id);
+        }
+
+        std::shared_ptr<Record> entry_record =
+            get_event_record(source_location, get_uuid(), "trace"sv, "function_entry"sv, workload);
+        sink::g_sink_manager.write_record(entry_record);
       }
-
-      _data->_stack_depth++;
-      _data->_workload                  = workload;
-      _data->_source_location           = std::make_unique<giopler::source_location>(source_location);
-      _data->_function_event_id         = get_uuid();
-      _data->_old_parent_function_name  = g_parent_function_name;
-      _data->_old_function_name         = g_function_name;
-      g_parent_function_name            = g_function_name;
-      g_function_name                   = source_location.function_name();
-
-      _data->_parent_function_object    = _data->_function_object;
-      _data->_function_object           = this;
-
-      std::shared_ptr<Record> record = std::make_shared<Record>(
-          create_message_record(source_location, get_uuid(),
-                                "trace"sv, "function_entry"sv, workload, ""sv));
-      sink::g_sink_manager.write_record(record);
-    }
-  }
-
-  ~Function() {
-    if constexpr (g_build_mode == BuildMode::Dev) {
-      std::shared_ptr<Record> record = std::make_shared<Record>(
-          create_message_record(*(_data->_source_location), get_uuid(),
-                                "trace"sv, "function_exit"sv, _data->_workload, ""sv));
-      sink::g_sink_manager.write_record(record);
-    } else if constexpr (g_build_mode == BuildMode::Prof) {
-      _data->_duration_total = timestamp_diff(_data->_start_time, now());
-      std::shared_ptr<Record> event_counters_total = std::make_shared<Record>(read_event_counters());
-      subtract_number_record(*event_counters_total, _data->_event_counters_start);
-      event_counters_total->insert({{"prof.duration", _data->_duration_total}});
-
-      std::shared_ptr<Record> record = std::make_shared<Record>(
-          create_profile_record(*(_data->_source_location), "profile_linux",
-                                _data->_function_event_id, "function"s, _data->_workload, event_counters_total));
-      track_child(*event_counters_total);
-
-      std::shared_ptr<Record> event_counters_self = std::make_shared<Record>(*event_counters_total);
-      subtract_number_record(*event_counters_self, _data->_event_counters_children);
-      record->insert({{"prof.self", event_counters_self}});
-
-      sink::g_sink_manager.write_record(record);
     }
 
-    if constexpr (g_build_mode == BuildMode::Dev || g_build_mode == BuildMode::Prof) {
-      g_parent_function_name    = _data->_old_parent_function_name;
-      g_function_name           = _data->_old_function_name;
-      _data->_function_object   = _data->_parent_function_object;
-      _data->_stack_depth--;
+    ~Function() {
+      if constexpr (g_build_mode != BuildMode::Off) {
+        std::shared_ptr<Record> exit_record =
+            get_event_record(*(_data->_source_location), get_uuid(),
+                             "trace"sv, "function_exit"sv, _data->_workload);
+
+        if constexpr (g_build_mode == BuildMode::Dev || g_build_mode == BuildMode::Prof) {
+          exit_record->insert({{"stack"s, _data->_trace->get_stack_array()}});
+        }
+
+        if constexpr (g_build_mode == BuildMode::Prof) {
+          exit_record->insert({{"prof_linux.total"s, _data->_profile->get_total_counters_record()}});
+          exit_record->insert({{"prof_linux.self"s,  _data->_profile->get_self_counters_record()}});
+        }
+
+        sink::g_sink_manager.write_record(exit_record);
+      }
     }
-  }
 
  private:
   struct FunctionData {
-    double _workload;
-    Timestamp _start_time;
-    std::string _function_event_id;   // event id for profile
-
-    double _duration_total = 0;
-    Record _event_counters_start;
-    Record _event_counters_children;
-
-    // use unique pointers to minimize their cost if build mode disables the class
-    std::unique_ptr<giopler::source_location> _source_location;
-    std::string _old_parent_function_name;
-    std::string _old_function_name;
-
-    Function* _parent_function_object;
-    static inline thread_local Function* _function_object = nullptr;
-    static inline thread_local std::uint32_t _stack_depth = 0;
+      std::unique_ptr<giopler::source_location> _source_location;
+      std::string _exit_event_id;
+      double _workload{};
+      std::unique_ptr<Trace> _trace;
+      std::unique_ptr<Profile> _profile;
   };
 
   // use a data object to help minimize impact when not in Dev or Prof build modes
   [[no_unique_address]]   // means could be a zero-length variable
-  std::conditional<g_build_mode == BuildMode::Dev || g_build_mode == BuildMode::Prof,
+  std::conditional<g_build_mode != BuildMode::Off,
     std::unique_ptr<FunctionData>, void>::type _data;
-
-  // ---------------------------------------------------------------------------
-  /// subtract from the calling function our counters
-  void track_child(const Record& record_event_counters_total) {
-    if (_data->_parent_function_object) {
-      add_number_record(_data->_parent_function_object->_data->_event_counters_children, record_event_counters_total);
-    }
-  }
-
-  // ---------------------------------------------------------------------------
-  /// walk the call stack chain and save the function entry UUIDs
-  // uses _stack_depth to preallocate the vector and to know where to store the values
-  // stack[0]   = thread
-  // stack[max] = current function
-  giopler::Array get_stack() {
-    giopler::Array stack;
-    stack.reserve(_data->_stack_depth+1);   // [0]=thread
-    std::size_t current_stack_frame = _data->_stack_depth;
-    Function* function_object       = this;
-
-    while (function_object) {
-      assert(current_stack_frame);
-      stack[current_stack_frame--] = function_object->_data->_function_event_id;
-      function_object              = function_object->_data->_parent_function_object;
-    }
-
-    assert(current_stack_frame == 0);
-    stack[0] = g_thread.get_event_id();
-    return stack;
-  }
 };
 
 // -----------------------------------------------------------------------------
 }   // namespace giopler::dev
 
 // -----------------------------------------------------------------------------
-#endif // defined GIOPLER_PROFILE_HPP
+#endif // defined GIOPLER_FUNCTION_HPP

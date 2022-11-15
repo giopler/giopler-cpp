@@ -33,6 +33,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <memory>
 #include <random>
 #include <set>
 #include <source_location>
@@ -231,64 +232,6 @@ class RecordValue
 };
 
 // -----------------------------------------------------------------------------
-/// catalog of all valid Record keys
-// the values are already sorted
-const std::vector<std::string>& get_record_catalog() {
-  static const std::vector<std::string> record_catalog {
-      "evt.event"s,
-      "evt.event_category"s,
-      "evt.event_id"s,
-      "evt.record_type"s,
-      "loc.file"s,
-      "loc.function"s,
-      "loc.line"s,
-      "prof.duration"s,
-      "prof.hw.branch_instructions"s,
-      "prof.hw.branch_misses"s,
-      "prof.hw.cache_misses"s
-      "prof.hw.cache_references"s,
-      "prof.hw.cpu_cycles"s,
-      "prof.hw.instructions"s,
-      "prof.hw.stall_cycles_back"s,
-      "prof.hw.stall_cycles_front"s,
-      "prof.sw.alignment_faults"s,
-      "prof.sw.context_switches"s,
-      "prof.sw.cpu_clock"s,
-      "prof.sw.cpu_migrations"s,
-      "prof.sw.emulation_faults"s,
-      "prof.sw.page_faults"s,
-      "prof.sw.page_faults_maj"s,
-      "prof.sw.page_faults_min"s,
-      "prof.sw.task_clock"s,
-      "prof.workload"s,
-      "prog.available_cpu_cores"s,
-      "prog.build_mode"s,
-      "prog.memory_page_size"s,
-      "prog.physical_memory"s,
-      "prog.process_id"s,
-      "prog.program_name"s,
-      "prog.run_id"s,
-      "prog.start_ts"s,
-      "prog.total_cpu_cores"s,
-      "trc.function"s,
-      "trc.parent_function"s,
-      "val.available_memory"s,
-      "val.cpu_id"s,
-      "val.message"s,
-      "val.thread_id"s,
-      "val.timestamp"s
-  };
-
-  return record_catalog;
-}
-
-// -----------------------------------------------------------------------------
-/// return a sorted vector of the keys
-std::vector<std::string> get_sorted_record_keys() {
-  return get_record_catalog();
-}
-
-// -----------------------------------------------------------------------------
 /// User-defined attributes
 // these are automatically included with events sent
 // we update a copy of the parent object, so it contains all active attributes
@@ -311,7 +254,7 @@ public:
       _attributes = _parent_attributes;
   }
 
-  static std::shared_ptr<giopler::Record> get_attributes() {
+  static std::shared_ptr<giopler::Record> get_attributes_record() {
     return _attributes ? _attributes->_data : std::make_shared<Record>();
   }
 
@@ -357,18 +300,6 @@ private:
     }
   }
 };
-
-// -----------------------------------------------------------------------------
-/// convert a source_location into a string
-// this is typically merged with other record maps
-Record source_location_to_record(const source_location& source_location)
-{
-  return Record{
-      {"loc.file",     source_location.file_name()},
-      {"loc.line",     source_location.line()},
-      {"loc.function", source_location.function_name()}
-  };
-}
 
 // -----------------------------------------------------------------------------
 void record_value_to_json(const RecordValue& value, std::stringstream& buffer)
@@ -453,72 +384,17 @@ std::string record_to_json(std::shared_ptr<Record> record)
 }
 
 // -----------------------------------------------------------------------------
-/// convert a Record to a CSV string
-std::string record_to_csv(const std::vector<std::string>& fields, std::shared_ptr<Record> record,
-                          std::string_view _separator = ","sv, std::string_view _string_quote = "\""sv)
-{
-    std::stringstream buffer;
-    bool first_field = true;
-    for (const auto& field : fields) {
-      // do not print anything for missing field values
-      const RecordValue value = record->contains(field) ? record->at(field) : RecordValue();
-
-      if (first_field) {
-        first_field = false;
-      } else {
-        buffer << _separator;
-      }
-
-      switch (value.get_type()) {
-        case RecordValue::Type::Boolean: {
-          buffer << format("{}", value.get_boolean());
-          break;
-        }
-
-        case RecordValue::Type::Integer: {
-          buffer << format("{}", value.get_integer());
-          break;
-        }
-
-        case RecordValue::Type::Real: {
-          buffer << format("{}", value.get_real());
-          break;
-        }
-
-        case RecordValue::Type::String: {
-          buffer << format("{0}{1}{0}", _string_quote, value.get_string());
-          break;
-        }
-
-        case RecordValue::Type::Timestamp: {
-          buffer << format("{0}{1}{0}", _string_quote, format_timestamp(value.get_timestamp()));
-          break;
-        }
-
-        case RecordValue::Type::Empty: {
-          break;
-        }
-
-        default: assert(false);
-      }
-    }
-
-    buffer.put('\n');
-    return buffer.str();
+/// returns the unique UUID for the program run
+std::string_view get_run_id() {
+  static const std::string run_id{get_uuid()};
+  return run_id;
 }
-
-// -----------------------------------------------------------------------------
-// these are updated at dev::Function class
-static inline thread_local std::string g_parent_function_name;
-static inline thread_local std::string g_function_name;
 
 // -----------------------------------------------------------------------------
 /// read program-wide variables
 // these values are constant per program run
-Record create_program_record() {
-  Record record{
-      {"evt.record_type"s,          "program"sv},
-      {"prog.run_id"s,              get_run_id()},
+std::shared_ptr<Record> get_program_record() {
+  return std::make_shared<Record>(Record{
       {"prog.start_ts"s,            now()},
       {"prog.memory_page_size"s,    get_memory_page_size()},
       {"prog.physical_memory"s,     get_physical_memory()},
@@ -533,80 +409,37 @@ Record create_program_record() {
       {"prog.host_name"s,           get_host_name()},
       {"prog.real_username"s,       get_real_username()},
       {"prog.effective_username"s,  get_effective_username()}
-  };
-  return record;
+  });
 }
 
 // -----------------------------------------------------------------------------
-/// create Record with common location fields for an event
-Record create_location_record(const source_location& source_location)
+std::shared_ptr<Record> get_event_record(const source_location& source_location,
+                                         std::string_view event_id,
+                                         std::string_view event_category,
+                                         std::string_view event,
+                                         const double workload = 0,
+                                         const std::string_view message = ""sv)
 {
-  Record record{
-      {"loc.file",                source_location.file_name()},
-      {"loc.line",                source_location.line()},
-      {"loc.function",            source_location.function_name()},
+  return std::make_shared<Record>(Record{
+      {"prog.run_id"s,            get_run_id()},
 
-      {"trc.function",            g_function_name},
-      {"trc.parent_function",     g_parent_function_name},
-
-      {"val.timestamp",           now()},
-      {"val.thread_id"s,          get_thread_id()},
-      {"val.node_id"s,            get_node_id()},
-      {"val.cpu_id"s,             get_cpu_id()},
-      {"val.available_memory"s,   get_available_memory()}
-  };
-
-  return record;
-}
-
-// -----------------------------------------------------------------------------
-/// create Record with fields for message events
-Record create_message_record(const source_location& source_location,
-                             std::string_view event_id,
-                             std::string_view event_category,
-                             std::string_view event,
-                             const double workload,
-                             std::string_view message)
-{
-  Record record{create_location_record(source_location)};
-
-  record.insert({
-      {"evt.record_type"s,        "message"sv},
       {"evt.event_id"s,           event_id},
       {"evt.event_category"s,     event_category},
       {"evt.event"s,              event},
 
-      {"val.attributes"s,         Attributes::get_attributes()},
-      {"val.workload"s,           workload},
-      {"val.message"s,            message}
+      {"evt.file",                source_location.file_name()},
+      {"evt.line",                source_location.line()},
+      {"evt.function",            source_location.function_name()},
+
+      {"evt.timestamp",           now()},
+      {"evt.thread_id"s,          get_thread_id()},
+      {"evt.node_id"s,            get_node_id()},
+      {"evt.cpu_id"s,             get_cpu_id()},
+      {"evt.available_memory"s,   get_available_memory()},
+
+      {"evt.workload"s,           workload},
+      {"evt.message"s,            message}
   });
-
-  return record;
-}
-
-// -----------------------------------------------------------------------------
-/// create Record with common fields for an event
-Record create_profile_record(const source_location& source_location,
-                             std::string_view record_type,
-                             std::string_view event_id,
-                             std::string_view event,
-                             const double workload,
-                             std::shared_ptr<Record> total)
-{
-  Record record{create_location_record(source_location)};
-
-  record.insert({
-      {"evt.record_type"s,        record_type},
-      {"evt.event_id"s,           event_id},
-      {"evt.event_category"s,     "profile"sv},
-      {"evt.event"s,              event},
-
-      {"val.attributes"s,         Attributes::get_attributes()},
-      {"val.workload"s,           workload},
-      {"prof.total"s,             total}
-  });
-
-  return record;
 }
 
 // -----------------------------------------------------------------------------
@@ -625,7 +458,9 @@ struct std::hash<giopler::RecordValue> {
       record_value._integer_value,
       record_value._real_value,
       record_value._string_value,
-      record_value._timestamp_value);
+      record_value._timestamp_value,
+      record_value._record_value,
+      record_value._array_value);
     return seed;
   }
 };

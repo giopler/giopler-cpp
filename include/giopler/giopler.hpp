@@ -40,8 +40,6 @@
 #include "giopler/log.hpp"
 
 #include "giopler/counter.hpp"
-#include "giopler/program.hpp"
-#include "giopler/thread.hpp"
 #include "giopler/function.hpp"
 
 // -----------------------------------------------------------------------------

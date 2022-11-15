@@ -359,12 +359,6 @@ class LinuxEvents {
                                      PERF_TYPE_HARDWARE, PERF_COUNT_HW_CACHE_MISSES);
 
   }
-
-  /// convert nanosecond counter to floating point seconds
-  static double ns_to_sec(const std::uint64_t ns) {
-    constexpr double factor = 0.000'000'001;
-    return static_cast<double>(ns) * factor;
-  }
 };
 
 // -----------------------------------------------------------------------------

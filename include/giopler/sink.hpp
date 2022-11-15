@@ -147,33 +147,24 @@ static inline SinkManager g_sink_manager{};
 // https://www.json.org/
 class Json : public Sink {
  public:
-  Json(std::vector<std::string> fields, std::string_view filepath)
+  Json(std::string_view filepath)
   :
     _output_stream{get_output_filepath(filepath, "json"sv)},
-    _osync_stream{std::osyncstream(*_output_stream)},
-    _fields(std::move(fields))
+    _osync_stream{std::osyncstream(*_output_stream)}
   { }
 
   ~Json() override = default;
 
   /// add a new JSON format data record sink
-  // empty fields list = add all fields in sorted order
   // Directory patterns:
   //   <temp>, <current>, <home>   - optionally follow these with other directories
   //   <cout>, <clog>, <cerr>      - these specify the entire path
-  static void add_sink(std::vector<std::string> fields = {}, std::string_view path = "<current>"sv) {
-    if (fields.empty()) {
-      fields = get_sorted_record_keys();
-    }
-    g_sink_manager.add_sink(std::make_unique<Json>(std::move(fields),path));
+  static void add_sink(std::string_view path = "<current>"sv) {
+    g_sink_manager.add_sink(std::make_unique<Json>(path));
   }
 
  protected:
   bool write_record(std::shared_ptr<Record> record) override {
-    if (is_record_filtered(*record)) {
-      return false;
-    }
-
     _osync_stream << record_to_json(record);
     return true;   // record was not filtered and it was written out
   }
@@ -187,85 +178,6 @@ class Json : public Sink {
   std::unique_ptr<std::ostream> _output_stream;
   std::osyncstream _osync_stream;
   std::vector<std::string> _fields;
-
-  /// Skip writing this record due to filter conditions for sink?
-  bool is_record_filtered(const Record& record) {
-    return false;
-  }
-};
-
-// -----------------------------------------------------------------------------
-/// log file destination using CSV format
-class Csv : public Sink {
- public:
-  explicit Csv(std::vector<std::string> fields, std::string_view filepath = "<current>"sv,
-      const bool header = true, std::string_view separator = ","sv, std::string_view string_quote = "\""sv)
-  :
-    _output_stream{get_output_filepath(filepath, "txt")},
-    _osync_stream{std::osyncstream(*_output_stream)},
-    _fields(std::move(fields)), _header(header), _separator(separator), _string_quote(string_quote)
-  {
-    if (_header)   add_header();
-  }
-
-  ~Csv() override = default;
-
-  /// add a new CSV format data record sink
-  // empty fields list = add all fields in sorted order
-  // Directory patterns:
-  //   <temp>, <current>, <home>   - optionally follow these with other directories
-  //   <cout>, <clog>, <cerr>      - these specify the entire path
-  static void add_sink(std::vector<std::string> fields = {}, std::string_view filepath = "<current>"sv,
-    const bool header = true, std::string_view separator = ","sv, std::string_view string_quote = "\""sv)
-  {
-    if (fields.empty()) {
-      fields = get_sorted_record_keys();
-    }
-    g_sink_manager.add_sink(std::make_unique<Csv>(std::move(fields), filepath, header, separator, string_quote));
-  }
-
- protected:
-  /// Add a first line header with the field names, if the option is enabled.
-  // Guaranteed to happen before sink is enabled, so no need to buffer the output.
-  void add_header() {
-    bool first_field = true;
-    for (const auto& field : _fields) {
-      if (first_field) {
-        first_field = false;
-      } else {
-        _osync_stream << _separator;
-      }
-
-      _osync_stream << field;
-    }
-    _osync_stream.put('\n');
-  }
-
-  bool write_record(std::shared_ptr<Record> record) override {
-    if (is_record_filtered(*record)) {
-      return false;
-    }
-
-    _osync_stream << record_to_csv(_fields, record, _separator, _string_quote);
-    return true;
-  }
-
-  void flush() override {
-    _osync_stream.emit();
-    _output_stream->flush();
-  }
-
- private:
-  std::unique_ptr<std::ostream> _output_stream;
-  std::osyncstream _osync_stream;
-  std::vector<std::string> _fields;
-  bool _header;
-  std::string_view _separator;
-  std::string_view _string_quote;
-
-  bool is_record_filtered(const Record& record) {
-    return false;
-  }
 };
 
 // -----------------------------------------------------------------------------
@@ -283,15 +195,10 @@ namespace giopler::sink {
 /// Create default sinks if write attempted and no sinks defined already
 // Defined here, so we can refer to the sink classes.
 void SinkManager::create_sinks() {
-  if (g_sink_manager._sinks.empty()) {
-    Csv::add_sink({"val.timestamp", "cat.category", "cat.event", "val.message"},
-                  "<clog>", false, " ", "");
-
-    if (std::getenv("GIOPLER_TOKEN")) {
-      Rest::add_sink(std::getenv("GIOPLER_TOKEN"));
-    } else {
-      Json::add_sink();   // adds all record keys in sorted order
-    }
+  if (std::getenv("GIOPLER_TOKEN")) {
+    Rest::add_sink(std::getenv("GIOPLER_TOKEN"));
+  } else {
+    Json::add_sink();   // adds all record keys in sorted order
   }
 }
 

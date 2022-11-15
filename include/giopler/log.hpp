@@ -44,8 +44,8 @@ void warning(const std::string_view message,
   if constexpr (!(g_build_mode == BuildMode::Dev || g_build_mode == BuildMode::Test)) {
     return;
   } else {
-    std::shared_ptr<Record> record = std::make_shared<Record>(
-        create_message_record(source_location, get_uuid(), "log", "warning", 0, message));
+    std::shared_ptr<Record> record =
+        get_event_record(source_location, get_uuid(), "log", "warning", 0, message);
     sink::g_sink_manager.write_record(record);
   }
 }
@@ -57,8 +57,8 @@ void warning(StringFunction auto message_function,
   if constexpr (!(g_build_mode == BuildMode::Dev || g_build_mode == BuildMode::Test)) {
     return;
   } else {
-    std::shared_ptr<Record> record = std::make_shared<Record>(
-        create_message_record(source_location, get_uuid(), "log", "warning", message_function()));
+    std::shared_ptr<Record> record =
+        get_event_record(source_location, get_uuid(), "log", "warning", message_function());
     sink::g_sink_manager.write_record(record);
   }
 }
@@ -77,8 +77,8 @@ void error(const std::string_view message,
   if constexpr (g_build_mode == BuildMode::Off) {
     return;
   } else {
-    std::shared_ptr<Record> record = std::make_shared<Record>(
-        create_message_record(source_location, get_uuid(), "log", "error", 0, message));
+    std::shared_ptr<Record> record =
+        get_event_record(source_location, get_uuid(), "log", "error", 0, message);
     record->insert({{"val.message", message}});
     sink::g_sink_manager.write_record(record);
   }
@@ -91,8 +91,8 @@ void error(StringFunction auto message_function,
   if constexpr (g_build_mode == BuildMode::Off) {
     return;
   } else {
-    std::shared_ptr<Record> record = std::make_shared<Record>(
-        create_message_record(source_location, get_uuid(), "log", "error", message_function()));
+    std::shared_ptr<Record> record =
+        get_event_record(source_location, get_uuid(), "log", "error", message_function());
     record->insert({{"val.message", message_function()}});
     sink::g_sink_manager.write_record(record);
   }
@@ -105,8 +105,8 @@ void message(const std::string_view message,
   if constexpr (g_build_mode == BuildMode::Off) {
     return;
   } else {
-    std::shared_ptr<Record> record = std::make_shared<Record>(
-        create_message_record(source_location, get_uuid(), "log", "message", 0, message));
+    std::shared_ptr<Record> record =
+        get_event_record(source_location, get_uuid(), "log", "message", 0, message);
     record->insert({{"val.message", message}});
     sink::g_sink_manager.write_record(record);
   }
@@ -119,8 +119,8 @@ void message(StringFunction auto message_function,
   if constexpr (g_build_mode == BuildMode::Off) {
     return;
   } else {
-    std::shared_ptr<Record> record = std::make_shared<Record>(
-        create_message_record(source_location, get_uuid(), "log", "message", message_function()));
+    std::shared_ptr<Record> record =
+        get_event_record(source_location, get_uuid(), "log", "message", message_function());
     record->insert({{"val.message", message_function()}});
     sink::g_sink_manager.write_record(record);
   }

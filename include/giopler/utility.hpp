@@ -203,12 +203,19 @@ std::uint64_t to_nanoseconds(const Timestamp ts) {
 }
 
 // -----------------------------------------------------------------------------
+/// convert nanosecond counter to floating point seconds
+double ns_to_sec(const std::uint64_t ns) {
+  constexpr double factor = 0.000'000'001;
+  return static_cast<double>(ns) * factor;
+}
+
+// -----------------------------------------------------------------------------
 /// return seconds in double between the two timestamps
 double timestamp_diff(const Timestamp start, const Timestamp end) {
   const std::uint64_t timestamp_start_ns = to_nanoseconds(start);
   const std::uint64_t timestamp_end_ns   = to_nanoseconds(end);
   const std::uint64_t delta_ns           = timestamp_end_ns - timestamp_start_ns;
-  return static_cast<double>(delta_ns) / 1000'000'000.0;
+  return static_cast<double>(delta_ns) / 1'000'000'000.0;
 }
 
 // -----------------------------------------------------------------------------
@@ -334,13 +341,6 @@ std::string get_uuid()
       result.push_back(hex_char[hex_digit(gen)]);
     };
     return result;
-}
-
-// -----------------------------------------------------------------------------
-/// returns the unique UUID for the program run
-std::string_view get_run_id() {
-  const static std::string run_id{get_uuid()};
-  return run_id;
 }
 
 // -----------------------------------------------------------------------------

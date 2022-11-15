@@ -35,8 +35,7 @@
 using namespace std::literals;
 
 // -----------------------------------------------------------------------------
-namespace giopler
-{
+namespace giopler {
 
 // -----------------------------------------------------------------------------
 // g_build_mode controls the operating mode for the library.
@@ -103,7 +102,6 @@ constexpr std::string_view get_compiler_name() {
   }
   return "Unknown"sv;
 }
-
 
 // -----------------------------------------------------------------------------
 /// Platform defines the operating system.

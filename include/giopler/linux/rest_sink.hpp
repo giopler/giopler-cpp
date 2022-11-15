@@ -80,7 +80,6 @@ class Rest : public Sink
     _host{host},
     _port{port}
   {
-    _fields = get_sorted_record_keys();
     _json_web_token = std::getenv("GIOPLER_TOKEN");
     open_connection();
   }
@@ -103,10 +102,6 @@ class Rest : public Sink
   // use a mutex to serialize the writes
   // this maximizes the chances that the HTTP connection will stay open
   bool write_record(std::shared_ptr<Record> record) override {
-    if (is_record_filtered(*record)) {
-      return false;
-    }
-
     const std::lock_guard<std::mutex> lock{_mutex};
     const std::string path{std::string{SERVER_PATH} + record->at("evt.record_type").get_string()};
     post(path, record_to_json(record));
@@ -120,7 +115,6 @@ class Rest : public Sink
   constexpr static inline std::string_view SERVER_PATH{"/api/v1/"sv};
   constexpr static inline std::string_view SERVER_PORT{"8100"sv};
   std::mutex _mutex;
-  std::vector<std::string> _fields;
   constexpr static std::size_t RESULT_BUFFER_SIZE = 2048;
   SSL_CTX* _ssl_ctx;
   const SSL_METHOD* _ssl_method;
@@ -253,11 +247,6 @@ class Rest : public Sink
   void close_connection() {
       BIO_free_all(_bio);
       SSL_CTX_free(_ssl_ctx);
-  }
-
-  /// Skip writing this record due to filter conditions for sink?
-  bool is_record_filtered(const Record& record) {
-    return false;
   }
 };
 

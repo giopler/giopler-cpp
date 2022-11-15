@@ -44,8 +44,8 @@ void line(const std::string_view message,
   if constexpr (!(g_build_mode == BuildMode::Dev || g_build_mode == BuildMode::Test)) {
     return;
   } else {
-    std::shared_ptr<Record> record = std::make_shared<Record>(
-        create_message_record(source_location, get_uuid(), "trace", "line", 0, message));
+    std::shared_ptr<Record> record =
+        get_event_record(source_location, get_uuid(), "trace", "line", 0, message);
     sink::g_sink_manager.write_record(record);
   }
 }
@@ -57,8 +57,8 @@ void line(StringFunction auto message_function,
   if constexpr (!(g_build_mode == BuildMode::Dev || g_build_mode == BuildMode::Test)) {
     return;
   } else {
-    std::shared_ptr<Record> record = std::make_shared<Record>(
-        create_message_record(source_location, "trace", "line", message_function()));
+    std::shared_ptr<Record> record =
+        get_event_record(source_location, "trace", "line", message_function());
     sink::g_sink_manager.write_record(record);
   }
 }
@@ -116,8 +116,8 @@ void branch(const std::string_view message,
   if constexpr (g_build_mode == BuildMode::Off) {
     return;
   } else {
-    std::shared_ptr<Record> record = std::make_shared<Record>(
-        create_message_record(source_location, get_uuid(), "trace", "branch", 0, message));
+    std::shared_ptr<Record> record =
+        get_event_record(source_location, get_uuid(), "trace", "branch", 0, message);
     sink::g_sink_manager.write_record(record);
   }
 }
@@ -129,8 +129,8 @@ void branch(StringFunction auto message_function,
   if constexpr (g_build_mode == BuildMode::Off) {
     return;
   } else {
-    std::shared_ptr<Record> record = std::make_shared<Record>(
-        create_message_record(source_location, get_uuid(), "trace", "branch", message_function()));
+    std::shared_ptr<Record> record =
+        get_event_record(source_location, get_uuid(), "trace", "branch", message_function());
     record->insert({{"val.message", message_function()}});
     sink::g_sink_manager.write_record(record);
   }
