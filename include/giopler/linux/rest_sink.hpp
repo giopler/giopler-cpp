@@ -66,6 +66,13 @@ std::string compress_json(std::string_view json) {
 namespace giopler::sink {
 
 // -----------------------------------------------------------------------------
+// OpenSSL 1.1.1 removed the need for external locking of its internal data structures
+// https://www.openssl.org/blog/blog/2017/02/21/threads/
+// https://github.com/openssl/openssl/issues/2165
+// This means we are safe to make API calls as long as the data objects are not
+// shared between user threads. This matches the general design of this library.
+
+// -----------------------------------------------------------------------------
 // there is only one of these objects created per host/path
 // we use a mutex to serialize the HTTP writes
 class Rest : public Sink
@@ -103,7 +110,7 @@ class Rest : public Sink
   // this maximizes the chances that the HTTP connection will stay open
   bool write_record(std::shared_ptr<Record> record) override {
     const std::lock_guard<std::mutex> lock{_mutex};
-    const std::string path{std::string{SERVER_PATH} + record->at("evt.record_type").get_string()};
+    const std::string path{std::string{SERVER_PATH} + "event"s};
     post(path, record_to_json(record));
     return true;   // record was not filtered and it was written out
   }

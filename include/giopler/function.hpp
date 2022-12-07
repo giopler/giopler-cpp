@@ -58,8 +58,8 @@ class Trace final
   }
 
   /// generates the JSON compatible function call stack
-  // [0] = program, [1] = thread
-  // [<program event id>, <thread event id>, <function event id>, ...]
+  // [0] = thread
+  // [<thread exit event id>, <function exit event id>, ...]
   std::shared_ptr<giopler::Array> get_stack_array() {
     std::shared_ptr<giopler::Array> stack;
     stack->reserve(_stack_depth);
@@ -153,19 +153,19 @@ class Program final
 
         _data->_source_location = std::make_unique<giopler::source_location>(source_location);
 
-        std::shared_ptr<Record> entry_record =
-            get_event_record(source_location, get_uuid(), "trace"sv, "program_entry"sv);
-        entry_record->insert({{"program"s, get_program_record()}});
-        sink::g_sink_manager.write_record(entry_record);
+        std::shared_ptr<Record> start_record =
+            get_event_record(source_location, get_uuid(), "trace"sv, "program_start"sv);
+        start_record->insert({{"program"s, get_program_record()}});
+        sink::g_sink_manager.write_record(start_record);
       }
     }
 
     ~Program() {
       if constexpr (g_build_mode != BuildMode::Off) {
-        std::shared_ptr<Record> exit_record =
-            get_event_record(*(_data->_source_location), get_uuid(), "trace"sv, "program_exit"sv);
+        std::shared_ptr<Record> end_record =
+            get_event_record(*(_data->_source_location), get_uuid(), "trace"sv, "program_end"sv);
 
-        sink::g_sink_manager.write_record(exit_record);
+        sink::g_sink_manager.write_record(end_record);
       }
     }
 
@@ -309,6 +309,43 @@ class Function final
   // use a data object to help minimize impact when not in Dev or Prof build modes
   std::unique_ptr<FunctionData> _data;
 };
+
+// -----------------------------------------------------------------------------
+/// track the lifetime of an object
+class Object final
+{
+ public:
+    explicit Object([[maybe_unused]] giopler::source_location source_location = giopler::source_location::current())
+    {
+      if constexpr (g_build_mode != BuildMode::Off) {
+        _data = std::make_unique<ObjectData>();
+
+        _data->_source_location = std::make_unique<giopler::source_location>(source_location);
+
+        std::shared_ptr<Record> start_record =
+            get_event_record(source_location, get_uuid(), "trace"sv, "object_start"sv);
+        sink::g_sink_manager.write_record(start_record);
+      }
+    }
+
+    ~Object() {
+      if constexpr (g_build_mode != BuildMode::Off) {
+        std::shared_ptr<Record> end_record =
+            get_event_record(*(_data->_source_location), get_uuid(), "trace"sv, "object_end"sv);
+
+        sink::g_sink_manager.write_record(end_record);
+      }
+    }
+
+ private:
+  struct ObjectData {
+      std::unique_ptr<giopler::source_location> _source_location;
+  };
+
+  // use a data object to help minimize impact when not in Dev or Prof build modes
+  std::unique_ptr<ObjectData> _data;
+};
+
 
 // -----------------------------------------------------------------------------
 }   // namespace giopler::dev

@@ -41,13 +41,15 @@ namespace giopler {
 // g_build_mode controls the operating mode for the library.
 // Normally this is controlled from the CMake build files.
 // Define one of these constants to manually control the variable.
-enum class BuildMode {Off, Dev, Test, Prof, Qa, Prod};
+enum class BuildMode {Off, Dev, Test, Bench, Prof, Qa, Prod};
 #if defined(GIOPLER_BUILD_MODE_OFF)
 constexpr static inline BuildMode g_build_mode{BuildMode::Off};
 #elif defined(GIOPLER_BUILD_MODE_DEV)
 constexpr static inline BuildMode g_build_mode{BuildMode::Dev};
 #elif defined(GIOPLER_BUILD_MODE_TEST)
 constexpr static inline BuildMode g_build_mode{BuildMode::Test};
+#elif defined(GIOPLER_BUILD_MODE_BENCH)
+constexpr static inline BuildMode g_build_mode{BuildMode::Bench};
 #elif defined(GIOPLER_BUILD_MODE_PROF)
 constexpr static inline BuildMode g_build_mode{BuildMode::Prof};
 #elif defined(GIOPLER_BUILD_MODE_QA)
