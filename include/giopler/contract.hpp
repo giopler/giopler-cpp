@@ -76,7 +76,7 @@ namespace giopler::dev
 /// errors that arise because an argument value has not been accepted
 // the function's expectation of its arguments upon entry into the function
 // logs the error and throws exception
-void argument(const bool condition,
+void argument([[maybe_unused]] const bool condition,
               [[maybe_unused]] const source_location& source_location =
                 source_location::current())
 {
@@ -99,7 +99,7 @@ void argument(const bool condition,
 /// expect conditions are like preconditions
 // the function's expectation of the state of other objects upon entry into the function
 // logs the error and throws exception
-void expect(const bool condition,
+void expect([[maybe_unused]] const bool condition,
             [[maybe_unused]] const source_location& source_location =
               source_location::current())
 {
@@ -121,7 +121,7 @@ void expect(const bool condition,
 // -----------------------------------------------------------------------------
 /// confirms a condition that should be satisfied where it appears in a function body
 // logs the error and throws exception
-void confirm(const bool condition,
+void confirm([[maybe_unused]] const bool condition,
              [[maybe_unused]] const source_location& source_location =
                source_location::current())
 {
@@ -157,7 +157,7 @@ class Invariant final {
   Invariant() = delete;
 
   // check invariant on scope entry
-  explicit Invariant(std::function<bool()> condition_function,
+  explicit Invariant([[maybe_unused]] std::function<bool()> condition_function,
             [[maybe_unused]] const source_location& source_location =
               source_location::current())
   : _uncaught_exceptions(std::uncaught_exceptions()),
@@ -218,7 +218,7 @@ class Ensure final {
  public:
   Ensure() = delete;
 
-  explicit Ensure(std::function<bool()> condition_function,
+  explicit Ensure([[maybe_unused]] std::function<bool()> condition_function,
          [[maybe_unused]] const source_location& source_location =
           source_location::current())
   : _uncaught_exceptions(std::uncaught_exceptions()),
@@ -278,7 +278,7 @@ namespace giopler::prod
 /// confirms a condition that should be satisfied where it appears in a function body
 // logs the error and throws exception
 // this contract check is always enabled when the library is enabled, even in production mode
-void certify(const bool condition,
+void certify([[maybe_unused]] const bool condition,
              [[maybe_unused]] const source_location& source_location =
                source_location::current())
 {

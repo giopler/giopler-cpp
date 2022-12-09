@@ -20,8 +20,8 @@
 // SOFTWARE.
 
 #pragma once
-#ifndef GIOPLER_FUNCTION_HPP
-#define GIOPLER_FUNCTION_HPP
+#ifndef GIOPLER_PROFILE_HPP
+#define GIOPLER_PROFILE_HPP
 
 #if __cplusplus < 202002L
 #error C++20 or newer support required to use this header-only library.
@@ -39,13 +39,14 @@ namespace giopler::dev {
 
 // -----------------------------------------------------------------------------
 /// keeps track of nested Function instances
+// this is a private class for library internal use only
 // event_id is the UUID for the exit event of the Function
 // this is an internal implementation detail of the Function class
 class Trace final
 {
  public:
-  explicit Trace(std::string_view event_id)
-  : _event_id{event_id}
+  explicit Trace(UUID object_id)
+  : _object_id{std::move(object_id)}
   {
     _stack_depth++;
     _parent_trace_object  = _trace_object;
@@ -67,7 +68,7 @@ class Trace final
     Trace* trace_object             = this;
 
     while (trace_object) {
-      (*stack)[current_stack_frame--] = trace_object->_event_id;
+      (*stack)[current_stack_frame--] = trace_object->_object_id.get_string();
       trace_object                    = trace_object->_parent_trace_object;
     }
 
@@ -75,14 +76,15 @@ class Trace final
   }
 
  private:
-  static inline thread_local Trace* _trace_object = nullptr;
-  static inline thread_local std::uint32_t _stack_depth   = 0;
+  static inline thread_local Trace* _trace_object       = nullptr;
+  static inline thread_local std::uint32_t _stack_depth = 0;
   Trace* _parent_trace_object;
-  std::string _event_id;
+  UUID _object_id;
 };
 
 // -----------------------------------------------------------------------------
 /// keeps track of the profiling performance counters for Function
+// this is a private class for library internal use only
 // this is an internal implementation detail of the Function class
 class Profile final
 {
@@ -142,31 +144,33 @@ class Profile final
 
 // -----------------------------------------------------------------------------
 /// singleton instance for program-wide data
+// this is a private class for library internal use only
 // collects the initial system information
+// tries to match the lifetime of the program
 class Program final
 {
  public:
     explicit Program([[maybe_unused]] giopler::source_location source_location = giopler::source_location::current())
     {
-      if constexpr (g_build_mode == BuildMode::Dev || g_build_mode == BuildMode::Prof) {
+      if constexpr (g_build_mode == BuildMode::Dev || g_build_mode == BuildMode::Prof || g_build_mode == BuildMode::Bench) {
         _data = std::make_unique<ProgramData>();
         _data->_source_location = std::make_unique<giopler::source_location>(source_location);
 
-        std::shared_ptr<Record> start_record =
+        std::shared_ptr<Record> record_begin =
             get_event_record(source_location, EventCategory::Profile, Event::ProgramBegin,
                              _data->_object_id);
-        start_record->insert({{"program"s, get_program_record()}});
-        sink::g_sink_manager.write_record(start_record);
+        record_begin->insert({{"program"s, get_program_record()}});
+        sink::g_sink_manager.write_record(record_begin);
       }
     }
 
     ~Program() {
-      if constexpr (g_build_mode == BuildMode::Dev || g_build_mode == BuildMode::Prof) {
-        std::shared_ptr<Record> end_record =
+      if constexpr (g_build_mode == BuildMode::Dev || g_build_mode == BuildMode::Prof || g_build_mode == BuildMode::Bench) {
+        std::shared_ptr<Record> record_end =
             get_event_record(*(_data->_source_location), EventCategory::Profile, Event::ProgramEnd,
                              _data->_object_id);
 
-        sink::g_sink_manager.write_record(end_record);
+        sink::g_sink_manager.write_record(record_end);
       }
     }
 
@@ -176,7 +180,7 @@ class Program final
       UUID _object_id;
   };
 
-  // use a data object to help minimize impact when not in Dev or Prof build modes
+  // use a data object to help minimize impact when not enabled
   std::unique_ptr<ProgramData> _data;
 };
 
@@ -185,47 +189,43 @@ static inline Program g_program;
 
 // -----------------------------------------------------------------------------
 /// one instance per thread
-// collects the initial system information
+// this is a private class for library internal use only
+// tries to match the lifetime of the thread
+// we keep trrack of the Trace, but don't bother to report it (empty stack)
 class Thread final
 {
  public:
     explicit Thread([[maybe_unused]] giopler::source_location source_location = giopler::source_location::current())
     {
-      if constexpr (g_build_mode != BuildMode::Off) {
+      if constexpr (g_build_mode == BuildMode::Dev || g_build_mode == BuildMode::Prof || g_build_mode == BuildMode::Bench) {
         _data = std::make_unique<ThreadData>();
 
-        if constexpr (g_build_mode == BuildMode::Prof) {
+        if constexpr (g_build_mode == BuildMode::Prof || g_build_mode == BuildMode::Bench) {
           _data->_profile = std::make_unique<Profile>();
         }
 
         _data->_source_location = std::make_unique<giopler::source_location>(source_location);
-        _data->_exit_event_id = get_uuid();
+        _data->_trace           = std::make_unique<Trace>(_data->_object_id);
 
-        if constexpr (g_build_mode == BuildMode::Dev || g_build_mode == BuildMode::Prof) {
-          _data->_trace = std::make_unique<Trace>(_data->_exit_event_id);
-        }
-
-        std::shared_ptr<Record> entry_record =
-            get_event_record(source_location, get_uuid(), "trace"sv, "thread_entry"sv);
-        sink::g_sink_manager.write_record(entry_record);
+        std::shared_ptr<Record> record_begin =
+            get_event_record(source_location, EventCategory::Profile, Event::ThreadBegin,
+                             _data->_object_id);
+        sink::g_sink_manager.write_record(record_begin);
       }
     }
 
     ~Thread() {
-      if constexpr (g_build_mode != BuildMode::Off) {
-        std::shared_ptr<Record> exit_record =
-            get_event_record(*(_data->_source_location), get_uuid(), "trace"sv, "thread_exit"sv);
+      if constexpr (g_build_mode == BuildMode::Dev || g_build_mode == BuildMode::Prof || g_build_mode == BuildMode::Bench) {
+        std::shared_ptr<Record> record_end =
+            get_event_record(*(_data->_source_location), EventCategory::Profile, Event::ThreadEnd,
+                             _data->_object_id);
 
-        if constexpr (g_build_mode == BuildMode::Dev || g_build_mode == BuildMode::Prof) {
-          exit_record->insert({{"stack"s, _data->_trace->get_stack_array()}});
+        if constexpr (g_build_mode == BuildMode::Prof || g_build_mode == BuildMode::Bench) {
+          record_end->insert({{"prof_linux.total"s, _data->_profile->get_total_counters_record()}});
+          record_end->insert({{"prof_linux.self"s,  _data->_profile->get_self_counters_record()}});
         }
 
-        if constexpr (g_build_mode == BuildMode::Prof) {
-          exit_record->insert({{"prof_linux.total"s, _data->_profile->get_total_counters_record()}});
-          exit_record->insert({{"prof_linux.self"s,  _data->_profile->get_self_counters_record()}});
-        }
-
-        sink::g_sink_manager.write_record(exit_record);
+        sink::g_sink_manager.write_record(record_end);
       }
     }
 
@@ -233,12 +233,11 @@ class Thread final
   struct ThreadData {
       std::unique_ptr<giopler::source_location> _source_location;
       UUID _object_id;
-      std::string _exit_event_id;
       std::unique_ptr<Trace> _trace;
       std::unique_ptr<Profile> _profile;
   };
 
-  // use a data object to help minimize impact when not in Dev or Prof build modes
+  // use a data object to help minimize impact when not enabled
   std::unique_ptr<ThreadData> _data;
 };
 
@@ -249,54 +248,50 @@ class Thread final
 static inline thread_local Thread g_thread;
 
 // -----------------------------------------------------------------------------
+/// trace or profile a function
 // in Dev mode we only keep track of locations for tracing
-// in Prof mode we also keep track of runtimes
-// we generate and store the event id (UUID) for the function profile
-// this way we can refer to the function instance while it is still running
-// workload is also saved in Dev/trace mode
+// in Prof or Bench mode we also keep track of runtimes
+// we generate and store the event id (UUID) for the function object
+//   this way we can refer to the function instance while it is still running
+// workload is a user-supplied amount of work performed estimate
+// report stack trace on entry and profile on exit
 class Function final
 {
  public:
     explicit Function([[maybe_unused]] const double workload = 0,
                       [[maybe_unused]] giopler::source_location source_location = giopler::source_location::current())
     {
-      if constexpr (g_build_mode != BuildMode::Off) {
+      if constexpr (g_build_mode == BuildMode::Dev || g_build_mode == BuildMode::Prof || g_build_mode == BuildMode::Bench) {
         _data = std::make_unique<FunctionData>();
 
-        if constexpr (g_build_mode == BuildMode::Prof) {
+        if constexpr (g_build_mode == BuildMode::Prof || g_build_mode == BuildMode::Bench) {
           _data->_profile = std::make_unique<Profile>();
         }
 
         _data->_source_location = std::make_unique<giopler::source_location>(source_location);
         _data->_workload        = workload;
-        _data->_exit_event_id   = get_uuid();
+        _data->_trace           = std::make_unique<Trace>(_data->_object_id);
 
-        if constexpr (g_build_mode == BuildMode::Dev || g_build_mode == BuildMode::Prof) {
-          _data->_trace = std::make_unique<Trace>(_data->_exit_event_id);
-        }
-
-        std::shared_ptr<Record> entry_record =
-            get_event_record(source_location, get_uuid(), "trace"sv, "function_entry"sv, workload);
-        sink::g_sink_manager.write_record(entry_record);
+        std::shared_ptr<Record> record_begin =
+            get_event_record(source_location, EventCategory::Profile, Event::FunctionBegin,
+                             _data->_object_id, workload);
+        record_begin->insert({{"stack"s, _data->_trace->get_stack_array()}});
+        sink::g_sink_manager.write_record(record_begin);
       }
     }
 
     ~Function() {
-      if constexpr (g_build_mode != BuildMode::Off) {
-        std::shared_ptr<Record> exit_record =
-            get_event_record(*(_data->_source_location), get_uuid(),
-                             "trace"sv, "function_exit"sv, _data->_workload);
-
-        if constexpr (g_build_mode == BuildMode::Dev || g_build_mode == BuildMode::Prof) {
-          exit_record->insert({{"stack"s, _data->_trace->get_stack_array()}});
-        }
+      if constexpr (g_build_mode == BuildMode::Dev || g_build_mode == BuildMode::Prof || g_build_mode == BuildMode::Bench) {
+        std::shared_ptr<Record> record_end =
+            get_event_record(*(_data->_source_location), EventCategory::Profile, Event::FunctionEnd,
+                             _data->_object_id, _data->_workload);
 
         if constexpr (g_build_mode == BuildMode::Prof) {
-          exit_record->insert({{"prof_linux.total"s, _data->_profile->get_total_counters_record()}});
-          exit_record->insert({{"prof_linux.self"s,  _data->_profile->get_self_counters_record()}});
+          record_end->insert({{"prof_linux.total"s, _data->_profile->get_total_counters_record()}});
+          record_end->insert({{"prof_linux.self"s,  _data->_profile->get_self_counters_record()}});
         }
 
-        sink::g_sink_manager.write_record(exit_record);
+        sink::g_sink_manager.write_record(record_end);
       }
     }
 
@@ -304,40 +299,43 @@ class Function final
   struct FunctionData {
       std::unique_ptr<giopler::source_location> _source_location;
       UUID _object_id;
-      std::string _exit_event_id;
       double _workload{};
       std::unique_ptr<Trace> _trace;
       std::unique_ptr<Profile> _profile;
   };
 
-  // use a data object to help minimize impact when not in Dev or Prof build modes
+  // use a data object to help minimize impact when not enabled
   std::unique_ptr<FunctionData> _data;
 };
 
 // -----------------------------------------------------------------------------
 /// track the lifetime of an object
+// report stack trace on entry and profile on exit
+// we cannot collect Trace or Profile data
 class Object final
 {
  public:
     explicit Object([[maybe_unused]] giopler::source_location source_location = giopler::source_location::current())
     {
-      if constexpr (g_build_mode != BuildMode::Off) {
+      if constexpr (g_build_mode == BuildMode::Dev || g_build_mode == BuildMode::Prof) {
         _data = std::make_unique<ObjectData>();
 
         _data->_source_location = std::make_unique<giopler::source_location>(source_location);
 
-        std::shared_ptr<Record> start_record =
-            get_event_record(source_location, get_uuid(), "trace"sv, "object_start"sv);
-        sink::g_sink_manager.write_record(start_record);
+        std::shared_ptr<Record> record_begin =
+            get_event_record(source_location, EventCategory::Profile, Event::ObjectBegin,
+                             _data->_object_id);
+        sink::g_sink_manager.write_record(record_begin);
       }
     }
 
     ~Object() {
-      if constexpr (g_build_mode != BuildMode::Off) {
-        std::shared_ptr<Record> end_record =
-            get_event_record(*(_data->_source_location), get_uuid(), "trace"sv, "object_end"sv);
+      if constexpr (g_build_mode == BuildMode::Dev || g_build_mode == BuildMode::Prof) {
+        std::shared_ptr<Record> record_end =
+            get_event_record(*(_data->_source_location), EventCategory::Profile, Event::ObjectEnd,
+                             _data->_object_id);
 
-        sink::g_sink_manager.write_record(end_record);
+        sink::g_sink_manager.write_record(record_end);
       }
     }
 
@@ -347,7 +345,7 @@ class Object final
       UUID _object_id;
   };
 
-  // use a data object to help minimize impact when not in Dev or Prof build modes
+  // use a data object to help minimize impact when not enabled
   std::unique_ptr<ObjectData> _data;
 };
 
@@ -355,4 +353,4 @@ class Object final
 }   // namespace giopler::dev
 
 // -----------------------------------------------------------------------------
-#endif // defined GIOPLER_FUNCTION_HPP
+#endif // defined GIOPLER_PROFILE_HPP

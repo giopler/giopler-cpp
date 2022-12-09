@@ -40,8 +40,8 @@ namespace giopler::dev
 // -----------------------------------------------------------------------------
 /// log executing code on a certain line in the program
 // used for debugging purposes
-void line(const std::string_view message = ""sv,
-          const source_location& source_location = source_location::current())
+void line([[maybe_unused]] const std::string_view message = ""sv,
+          [[maybe_unused]] const source_location& source_location = source_location::current())
 {
   if constexpr (g_build_mode == BuildMode::Dev) {
     std::shared_ptr<Record> record =
@@ -54,8 +54,8 @@ void line(const std::string_view message = ""sv,
 // -----------------------------------------------------------------------------
 /// log executing code on a certain line in the program
 // used for debugging purposes
-void line(StringFunction auto message_function,
-          const source_location& source_location = source_location::current())
+void line([[maybe_unused]] StringFunction auto message_function,
+          [[maybe_unused]] const source_location& source_location = source_location::current())
 {
   if constexpr (g_build_mode == BuildMode::Dev) {
     std::shared_ptr<Record> record =
@@ -118,8 +118,8 @@ namespace giopler::prod
 
 // -----------------------------------------------------------------------------
 /// documents
-void branch(const std::string_view message = ""sv,
-            const giopler::source_location& source_location = giopler::source_location::current())
+void branch([[maybe_unused]] const std::string_view message = ""sv,
+            [[maybe_unused]] const giopler::source_location& source_location = giopler::source_location::current())
 {
   if constexpr (g_build_mode != BuildMode::Off) {
     std::shared_ptr<Record> record =
@@ -130,8 +130,8 @@ void branch(const std::string_view message = ""sv,
 }
 
 // -----------------------------------------------------------------------------
-void branch(StringFunction auto message_function,
-            const giopler::source_location& source_location = giopler::source_location::current())
+void branch([[maybe_unused]] StringFunction auto message_function,
+            [[maybe_unused]] const giopler::source_location& source_location = giopler::source_location::current())
 {
   if constexpr (g_build_mode != BuildMode::Off) {
     std::shared_ptr<Record> record =

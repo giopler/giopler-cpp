@@ -39,8 +39,8 @@ namespace giopler::dev
 
 // -----------------------------------------------------------------------------
 /// signal a potentially erroneous condition
-void warning(const std::string_view message = ""sv,
-             const source_location& source_location = source_location::current())
+void warning([[maybe_unused]] const std::string_view message = ""sv,
+             [[maybe_unused]] const source_location& source_location = source_location::current())
 {
   if constexpr (g_build_mode == BuildMode::Dev || g_build_mode == BuildMode::Test) {
     std::shared_ptr<Record> record =
@@ -52,8 +52,8 @@ void warning(const std::string_view message = ""sv,
 
 // -----------------------------------------------------------------------------
 /// signal a potentially erroneous condition
-void warning(StringFunction auto message_function,
-             const source_location& source_location = source_location::current())
+void warning([[maybe_unused]] StringFunction auto message_function,
+             [[maybe_unused]] const source_location& source_location = source_location::current())
 {
   if constexpr (g_build_mode == BuildMode::Dev || g_build_mode == BuildMode::Test) {
     std::shared_ptr<Record> record =
@@ -72,8 +72,8 @@ namespace giopler::prod
 
 // -----------------------------------------------------------------------------
 /// signal a definitely erroneous condition
-void error(const std::string_view message = ""sv,
-           const source_location& source_location = source_location::current())
+void error([[maybe_unused]] const std::string_view message = ""sv,
+           [[maybe_unused]] const source_location& source_location = source_location::current())
 {
   if constexpr (g_build_mode != BuildMode::Off) {
     std::shared_ptr<Record> record =
@@ -85,8 +85,8 @@ void error(const std::string_view message = ""sv,
 
 // -----------------------------------------------------------------------------
 /// signal a definitely erroneous condition
-void error(StringFunction auto message_function,
-           const source_location& source_location = source_location::current())
+void error([[maybe_unused]] StringFunction auto message_function,
+           [[maybe_unused]] const source_location& source_location = source_location::current())
 {
   if constexpr (g_build_mode != BuildMode::Off) {
     std::shared_ptr<Record> record =
@@ -97,8 +97,8 @@ void error(StringFunction auto message_function,
 }
 
 // -----------------------------------------------------------------------------
-void message(const std::string_view message = ""sv,
-             const source_location& source_location = source_location::current())
+void message([[maybe_unused]] const std::string_view message = ""sv,
+             [[maybe_unused]] const source_location& source_location = source_location::current())
 {
   if constexpr (g_build_mode != BuildMode::Off) {
     std::shared_ptr<Record> record =
@@ -109,8 +109,8 @@ void message(const std::string_view message = ""sv,
 }
 
 // -----------------------------------------------------------------------------
-void message(StringFunction auto message_function,
-             const source_location& source_location = source_location::current())
+void message([[maybe_unused]] StringFunction auto message_function,
+             [[maybe_unused]] const source_location& source_location = source_location::current())
 {
   if constexpr (g_build_mode != BuildMode::Off) {
     std::shared_ptr<Record> record =
