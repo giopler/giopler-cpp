@@ -75,7 +75,7 @@ namespace giopler::dev
 // -----------------------------------------------------------------------------
 /// errors that arise because an argument value has not been accepted
 // the function's expectation of its arguments upon entry into the function
-// prints error to std::cerr and throws exception
+// logs the error and throws exception
 void argument(const bool condition,
               [[maybe_unused]] const source_location& source_location =
                 source_location::current())
@@ -83,14 +83,14 @@ void argument(const bool condition,
   if constexpr (!(g_build_mode == BuildMode::Dev || g_build_mode == BuildMode::Test || g_build_mode == BuildMode::Qa)) {
     return;
   } else if (!condition) [[unlikely]] {
+    std::shared_ptr<Record> record =
+        get_event_record(source_location, EventCategory::Contract, Event::Argument);
+    sink::g_sink_manager.write_record(record);
+    sink::g_sink_manager.flush();   // throw could terminate program
+
     const std::string message =
       format("ERROR: {}: invalid argument",
              format_source_location(source_location));
-    std::shared_ptr<Record> record =
-        get_event_record(source_location, get_uuid(), "contract", "argument", 0, message);
-
-    sink::g_sink_manager.write_record(record);
-    sink::g_sink_manager.flush();   // next line could terminate program
     throw contract_violation{message};
   }
 }
@@ -98,7 +98,7 @@ void argument(const bool condition,
 // -----------------------------------------------------------------------------
 /// expect conditions are like preconditions
 // the function's expectation of the state of other objects upon entry into the function
-// prints error to std::cerr and throws exception
+// logs the error and throws exception
 void expect(const bool condition,
             [[maybe_unused]] const source_location& source_location =
               source_location::current())
@@ -106,21 +106,21 @@ void expect(const bool condition,
   if constexpr (!(g_build_mode == BuildMode::Dev || g_build_mode == BuildMode::Test || g_build_mode == BuildMode::Qa)) {
     return;
   } else if (!condition) [[unlikely]] {
+    std::shared_ptr<Record> record =
+        get_event_record(source_location, EventCategory::Contract, Event::Expect);
+    sink::g_sink_manager.write_record(record);
+    sink::g_sink_manager.flush();   // throw could terminate program
+
     const std::string message =
       format("ERROR: {}: expect condition failed",
              format_source_location(source_location));
-    std::shared_ptr<Record> record =
-        get_event_record(source_location, get_uuid(), "contract", "expect", 0, message);
-
-    sink::g_sink_manager.write_record(record);
-    sink::g_sink_manager.flush();   // next line could terminate program
     throw contract_violation{message};
   }
 }
 
 // -----------------------------------------------------------------------------
 /// confirms a condition that should be satisfied where it appears in a function body
-// prints error to std::cerr and throws exception
+// logs the error and throws exception
 void confirm(const bool condition,
              [[maybe_unused]] const source_location& source_location =
                source_location::current())
@@ -128,14 +128,14 @@ void confirm(const bool condition,
   if constexpr (!(g_build_mode == BuildMode::Dev || g_build_mode == BuildMode::Test || g_build_mode == BuildMode::Qa)) {
     return;
   } else if (!condition) [[unlikely]] {
+    std::shared_ptr<Record> record =
+        get_event_record(source_location, EventCategory::Contract, Event::Confirm);
+    sink::g_sink_manager.write_record(record);
+    sink::g_sink_manager.flush();   // throw could terminate program
+
     const std::string message =
       format("ERROR: {}: confirm failed",
              format_source_location(source_location));
-    std::shared_ptr<Record> record =
-        get_event_record(source_location, get_uuid(), "contract", "confirm", 0, message);
-
-    sink::g_sink_manager.write_record(record);
-    sink::g_sink_manager.flush();   // next line could terminate program
     throw contract_violation{message};
   }
 }
@@ -152,7 +152,7 @@ void confirm(const bool condition,
 
 // -----------------------------------------------------------------------------
 /// invariant condition to check on scope entry and exit
-class Invariant {
+class Invariant final {
  public:
   Invariant() = delete;
 
@@ -162,20 +162,19 @@ class Invariant {
               source_location::current())
   : _uncaught_exceptions(std::uncaught_exceptions()),
     _condition_function(std::move(condition_function)),
-    _source_location(source_location),
-    _event_id{get_uuid()}
+    _source_location(source_location)
   {
     if constexpr (!(g_build_mode == BuildMode::Dev || g_build_mode == BuildMode::Test || g_build_mode == BuildMode::Qa)) {
       return;
     } else if (!_condition_function()) [[unlikely]] {
+      std::shared_ptr<Record> record =
+          get_event_record(source_location, EventCategory::Contract, Event::InvariantBegin);
+      sink::g_sink_manager.write_record(record);
+      sink::g_sink_manager.flush();   // throw could terminate program
+
       const std::string message =
         format("ERROR: {}: invariant failed on entry",
                format_source_location(_source_location));
-      std::shared_ptr<Record> record =
-          get_event_record(source_location, _event_id, "contract", "invariant", 0, message);
-
-      sink::g_sink_manager.write_record(record);
-      sink::g_sink_manager.flush();   // next line could terminate program
       throw contract_violation{message};
     }
   }
@@ -188,14 +187,14 @@ class Invariant {
       return;
     } else if (!_condition_function()) [[unlikely]] {
       try {
+        std::shared_ptr<Record> record =
+            get_event_record(_source_location, EventCategory::Contract, Event::InvariantEnd);
+        sink::g_sink_manager.write_record(record);
+        sink::g_sink_manager.flush();   // throw could terminate program
+
         const std::string message =
           format("ERROR: {}: invariant failed on exit",
                  format_source_location(_source_location));
-        std::shared_ptr<Record> record =
-            get_event_record(_source_location, _event_id, "contract", "invariant", 0, message);
-
-        sink::g_sink_manager.write_record(record);
-        sink::g_sink_manager.flush();   // next line could terminate program
         throw contract_violation{message};
       } catch(...) {
         if (std::uncaught_exceptions() == _uncaught_exceptions) {
@@ -211,12 +210,11 @@ class Invariant {
   int _uncaught_exceptions;
   std::function<bool()> _condition_function;
   source_location _source_location;
-  std::string _event_id;
 };
 
 // -----------------------------------------------------------------------------
 /// ensure postcondition to check on scope exit
-class Ensure {
+class Ensure final {
  public:
   Ensure() = delete;
 
@@ -225,8 +223,7 @@ class Ensure {
           source_location::current())
   : _uncaught_exceptions(std::uncaught_exceptions()),
     _condition_function(std::move(condition_function)),
-    _source_location{source_location},
-    _event_id{get_uuid()}
+    _source_location{source_location}
   { }
 
   // check condition only on scope exit
@@ -237,14 +234,14 @@ class Ensure {
       return;
     } else if (!_condition_function()) [[unlikely]] {
       try {
+        std::shared_ptr<Record> record =
+            get_event_record(_source_location, EventCategory::Contract, Event::Ensure);
+        sink::g_sink_manager.write_record(record);
+        sink::g_sink_manager.flush();   // throw could terminate program
+
         const std::string message =
           format("ERROR: {}: ensure condition failed on exit",
                  format_source_location(_source_location));
-        std::shared_ptr<Record> record =
-            get_event_record(_source_location, _event_id, "contract", "ensure", 0, message);
-
-        sink::g_sink_manager.write_record(record);
-        sink::g_sink_manager.flush();   // next line could terminate program
         throw contract_violation{message};
       } catch(...) {
         if (std::uncaught_exceptions() == _uncaught_exceptions) {
@@ -260,7 +257,6 @@ class Ensure {
   int _uncaught_exceptions;
   std::function<bool()> _condition_function;
   source_location _source_location;
-  std::string _event_id;
 };
 
 // -----------------------------------------------------------------------------
@@ -280,7 +276,7 @@ namespace giopler::prod
 
 // -----------------------------------------------------------------------------
 /// confirms a condition that should be satisfied where it appears in a function body
-// prints error to std::cerr and throws exception
+// logs the error and throws exception
 // this contract check is always enabled when the library is enabled, even in production mode
 void certify(const bool condition,
              [[maybe_unused]] const source_location& source_location =
@@ -289,14 +285,14 @@ void certify(const bool condition,
   if constexpr (g_build_mode == BuildMode::Off) {
     return;
   } else if (!condition) [[unlikely]] {
-    const std::string message =
-      format("ERROR: {}: invalid argument",
-             format_source_location(source_location));
     std::shared_ptr<Record> record =
-        get_event_record(source_location, get_uuid(), "contract", "certify", 0, message);
-
+        get_event_record(source_location, EventCategory::Contract, Event::Certify);
     sink::g_sink_manager.write_record(record);
-    sink::g_sink_manager.flush();   // next line could terminate program
+    sink::g_sink_manager.flush();   // throw could terminate program
+
+    const std::string message =
+      format("ERROR: {}: certify failed",
+             format_source_location(source_location));
     throw contract_violation{message};
   }
 }

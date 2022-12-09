@@ -38,27 +38,29 @@ namespace giopler::dev
 {
 
 // -----------------------------------------------------------------------------
-void line(const std::string_view message,
+/// log executing code on a certain line in the program
+// used for debugging purposes
+void line(const std::string_view message = ""sv,
           const source_location& source_location = source_location::current())
 {
-  if constexpr (!(g_build_mode == BuildMode::Dev || g_build_mode == BuildMode::Test)) {
-    return;
-  } else {
+  if constexpr (g_build_mode == BuildMode::Dev) {
     std::shared_ptr<Record> record =
-        get_event_record(source_location, get_uuid(), "trace", "line", 0, message);
+        get_event_record(source_location, EventCategory::Trace, Event::Line,
+                         UUID::get_nil(), 0, message);
     sink::g_sink_manager.write_record(record);
   }
 }
 
 // -----------------------------------------------------------------------------
+/// log executing code on a certain line in the program
+// used for debugging purposes
 void line(StringFunction auto message_function,
           const source_location& source_location = source_location::current())
 {
-  if constexpr (!(g_build_mode == BuildMode::Dev || g_build_mode == BuildMode::Test)) {
-    return;
-  } else {
+  if constexpr (g_build_mode == BuildMode::Dev) {
     std::shared_ptr<Record> record =
-        get_event_record(source_location, "trace", "line", message_function());
+        get_event_record(source_location, EventCategory::Trace, Event::Line,
+                         UUID::get_nil(), 0, message_function());
     sink::g_sink_manager.write_record(record);
   }
 }
@@ -68,7 +70,10 @@ void line(StringFunction auto message_function,
 #pragma GCC diagnostic ignored "-Wattributes"
 
 // -----------------------------------------------------------------------------
-// forcing a function to always be inlined
+/// sets a runtime breakpoint in the program
+// used for debugging purposes
+// forces the function to always be inlined
+//
 // https://gcc.gnu.org/onlinedocs/gcc/Common-Function-Attributes.html
 // https://clang.llvm.org/docs/AttributeReference.html
 // https://docs.microsoft.com/en-us/cpp/cpp/attributes
@@ -85,17 +90,19 @@ void line(StringFunction auto message_function,
 [[gnu::always_inline]][[clang::always_inline]][[msvc::forceinline]] inline
 void set_breakpoint()
 {
+  if constexpr (g_build_mode == BuildMode::Dev) {
 #if defined(__has_builtin) && __has_builtin(__builtin_debugtrap)
-    __builtin_debugtrap();   // CLang
+      __builtin_debugtrap();   // CLang
 #elif defined(__has_builtin) && __has_builtin(__debugbreak)
-    __debugbreak();
+      __debugbreak();
 #elif defined(_MSC_VER) || defined(__INTEL_COMPILER)
-    __debugbreak();   // Microsoft C Compiler and Intel Compiler Collection
+      __debugbreak();   // Microsoft C Compiler and Intel Compiler Collection
 #elif defined(__i386__) || defined(__x86_64__)
-    __asm__ __volatile__("int3");   // x86/x86_64 processors
+      __asm__ __volatile__("int3");   // x86/x86_64 processors
 #else
-    #error Unsupported platform or compiler
+#error Unsupported platform or compiler
 #endif
+  }
 }
 
 // -----------------------------------------------------------------------------
@@ -110,14 +117,14 @@ namespace giopler::prod
 {
 
 // -----------------------------------------------------------------------------
-void branch(const std::string_view message,
+/// documents
+void branch(const std::string_view message = ""sv,
             const giopler::source_location& source_location = giopler::source_location::current())
 {
-  if constexpr (g_build_mode == BuildMode::Off) {
-    return;
-  } else {
+  if constexpr (g_build_mode != BuildMode::Off) {
     std::shared_ptr<Record> record =
-        get_event_record(source_location, get_uuid(), "trace", "branch", 0, message);
+        get_event_record(source_location, EventCategory::Trace, Event::Branch,
+                         UUID::get_nil(), 0, message);
     sink::g_sink_manager.write_record(record);
   }
 }
@@ -126,12 +133,10 @@ void branch(const std::string_view message,
 void branch(StringFunction auto message_function,
             const giopler::source_location& source_location = giopler::source_location::current())
 {
-  if constexpr (g_build_mode == BuildMode::Off) {
-    return;
-  } else {
+  if constexpr (g_build_mode != BuildMode::Off) {
     std::shared_ptr<Record> record =
-        get_event_record(source_location, get_uuid(), "trace", "branch", message_function());
-    record->insert({{"val.message", message_function()}});
+        get_event_record(source_location, EventCategory::Trace, Event::Branch,
+                         UUID::get_nil(), 0, message_function());
     sink::g_sink_manager.write_record(record);
   }
 }

@@ -148,22 +148,23 @@ class Program final
  public:
     explicit Program([[maybe_unused]] giopler::source_location source_location = giopler::source_location::current())
     {
-      if constexpr (g_build_mode != BuildMode::Off) {
+      if constexpr (g_build_mode == BuildMode::Dev || g_build_mode == BuildMode::Prof) {
         _data = std::make_unique<ProgramData>();
-
         _data->_source_location = std::make_unique<giopler::source_location>(source_location);
 
         std::shared_ptr<Record> start_record =
-            get_event_record(source_location, get_uuid(), "trace"sv, "program_start"sv);
+            get_event_record(source_location, EventCategory::Profile, Event::ProgramBegin,
+                             _data->_object_id);
         start_record->insert({{"program"s, get_program_record()}});
         sink::g_sink_manager.write_record(start_record);
       }
     }
 
     ~Program() {
-      if constexpr (g_build_mode != BuildMode::Off) {
+      if constexpr (g_build_mode == BuildMode::Dev || g_build_mode == BuildMode::Prof) {
         std::shared_ptr<Record> end_record =
-            get_event_record(*(_data->_source_location), get_uuid(), "trace"sv, "program_end"sv);
+            get_event_record(*(_data->_source_location), EventCategory::Profile, Event::ProgramEnd,
+                             _data->_object_id);
 
         sink::g_sink_manager.write_record(end_record);
       }
@@ -172,6 +173,7 @@ class Program final
  private:
   struct ProgramData {
       std::unique_ptr<giopler::source_location> _source_location;
+      UUID _object_id;
   };
 
   // use a data object to help minimize impact when not in Dev or Prof build modes
@@ -230,6 +232,7 @@ class Thread final
  private:
   struct ThreadData {
       std::unique_ptr<giopler::source_location> _source_location;
+      UUID _object_id;
       std::string _exit_event_id;
       std::unique_ptr<Trace> _trace;
       std::unique_ptr<Profile> _profile;
@@ -300,6 +303,7 @@ class Function final
  private:
   struct FunctionData {
       std::unique_ptr<giopler::source_location> _source_location;
+      UUID _object_id;
       std::string _exit_event_id;
       double _workload{};
       std::unique_ptr<Trace> _trace;
@@ -340,12 +344,12 @@ class Object final
  private:
   struct ObjectData {
       std::unique_ptr<giopler::source_location> _source_location;
+      UUID _object_id;
   };
 
   // use a data object to help minimize impact when not in Dev or Prof build modes
   std::unique_ptr<ObjectData> _data;
 };
-
 
 // -----------------------------------------------------------------------------
 }   // namespace giopler::dev

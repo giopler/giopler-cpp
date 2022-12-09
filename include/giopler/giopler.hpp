@@ -40,7 +40,7 @@
 #include "giopler/log.hpp"
 
 #include "giopler/counter.hpp"
-#include "giopler/function.hpp"
+#include "giopler/profile.hpp"
 
 // -----------------------------------------------------------------------------
 #endif // defined GIOPLER_GIOPLER_HPP

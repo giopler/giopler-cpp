@@ -50,6 +50,87 @@ using namespace std::literals;
 namespace giopler {
 
 // -----------------------------------------------------------------------------
+/// general category for the event
+enum class EventCategory {Contract, Trace, Log, Profile, Test, Bench};
+
+// -----------------------------------------------------------------------------
+/// convert the event category enum value into a string
+constexpr std::string_view get_event_category_name(const EventCategory event_category) {
+  switch (event_category) {
+    case EventCategory::Contract:   return "contract"sv;
+    case EventCategory::Trace:      return "trace"sv;
+    case EventCategory::Log:        return "log"sv;
+    case EventCategory::Profile:    return "profile"sv;
+    case EventCategory::Test:       return "test"sv;
+    case EventCategory::Bench:      return "bench"sv;
+  }
+  return "UnknownEventCategory"sv;
+}
+
+// -----------------------------------------------------------------------------
+/// uniquely identifies the event
+enum class Event {
+                  // Contract
+                  Argument,
+                  Expect,
+                  Confirm,
+                  InvariantBegin,
+                  InvariantEnd,
+                  Ensure,
+                  Certify,
+
+                  // Trace
+                  Line,
+                  Branch,
+
+                  // Log
+                  Warning,
+                  Error,
+                  Message,
+
+                  // Profile
+                  ProgramBegin,
+                  ProgramEnd,
+                  ThreadBegin,
+                  ThreadEnd,
+                  FunctionBegin,
+                  FunctionEnd,
+                  ObjectBegin,
+                  ObjectEnd
+};
+
+// -----------------------------------------------------------------------------
+/// convert the event category enum value into a string
+constexpr std::string_view get_event_name(const Event event) {
+  switch (event) {
+    case Event::Argument:       return "argument"sv;
+    case Event::Expect:         return "expect"sv;
+    case Event::Confirm:        return "confirm"sv;
+    case Event::InvariantBegin: return "invariant_begin"sv;
+    case Event::InvariantEnd:   return "invariant_end"sv;
+    case Event::Ensure:         return "ensure"sv;
+    case Event::Certify:        return "certify"sv;
+
+    case Event::Line:           return "line"sv;
+    case Event::Branch:         return "branch"sv;
+
+    case Event::Warning:        return "warning"sv;
+    case Event::Error:          return "error"sv;
+    case Event::Message:        return "message"sv;
+
+    case Event::ProgramBegin:   return "program_begin"sv;
+    case Event::ProgramEnd:     return "program_end"sv;
+    case Event::ThreadBegin:    return "thread_begin"sv;
+    case Event::ThreadEnd:      return "thread_end"sv;
+    case Event::FunctionBegin:  return "function_begin"sv;
+    case Event::FunctionEnd:    return "function_end"sv;
+    case Event::ObjectBegin:    return "object_begin"sv;
+    case Event::ObjectEnd:      return "object_end"sv;
+  }
+  return "UnknownEvent"sv;
+}
+
+// -----------------------------------------------------------------------------
 class RecordValue;
 
 // -----------------------------------------------------------------------------
@@ -385,8 +466,8 @@ std::string record_to_json(std::shared_ptr<Record> record)
 
 // -----------------------------------------------------------------------------
 /// returns the unique UUID for the program run
-std::string_view get_run_id() {
-  static const std::string run_id{get_uuid()};
+UUID get_run_id() {
+  static const UUID run_id{UUID{}};
   return run_id;
 }
 
@@ -414,24 +495,24 @@ std::shared_ptr<Record> get_program_record() {
 
 // -----------------------------------------------------------------------------
 std::shared_ptr<Record> get_event_record(const source_location& source_location,
-                                         std::string_view event_id,
-                                         std::string_view event_category,
-                                         std::string_view event,
+                                         EventCategory event_category,
+                                         Event event,
+                                         const UUID& event_object_id = UUID::get_nil(),
                                          const double workload = 0,
                                          const std::string_view message = ""sv)
 {
   return std::make_shared<Record>(Record{
-      {"prog.run_id"s,            get_run_id()},
+      {"prog.run_id"s,            get_run_id().get_string()},
 
-      {"evt.event_id"s,           event_id},
-      {"evt.event_category"s,     event_category},
-      {"evt.event"s,              event},
+      {"evt.event_category"s,     get_event_category_name(event_category)},
+      {"evt.event"s,              get_event_name(event)},
+      {"evt.event_object_id"s,    event_object_id.get_string()},
 
-      {"evt.file",                source_location.file_name()},
-      {"evt.line",                source_location.line()},
-      {"evt.function",            source_location.function_name()},
+      {"evt.file"s,               source_location.file_name()},
+      {"evt.line"s,               source_location.line()},
+      {"evt.function"s,           source_location.function_name()},
 
-      {"evt.timestamp",           now()},
+      {"evt.timestamp"s,          now()},
       {"evt.thread_id"s,          get_thread_id()},
       {"evt.node_id"s,            get_node_id()},
       {"evt.cpu_id"s,             get_cpu_id()},

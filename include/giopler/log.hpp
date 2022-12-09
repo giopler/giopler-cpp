@@ -38,27 +38,27 @@ namespace giopler::dev
 {
 
 // -----------------------------------------------------------------------------
-void warning(const std::string_view message,
+/// signal a potentially erroneous condition
+void warning(const std::string_view message = ""sv,
              const source_location& source_location = source_location::current())
 {
-  if constexpr (!(g_build_mode == BuildMode::Dev || g_build_mode == BuildMode::Test)) {
-    return;
-  } else {
+  if constexpr (g_build_mode == BuildMode::Dev || g_build_mode == BuildMode::Test) {
     std::shared_ptr<Record> record =
-        get_event_record(source_location, get_uuid(), "log", "warning", 0, message);
+        get_event_record(source_location, EventCategory::Log, Event::Warning,
+                         UUID::get_nil(), 0, message);
     sink::g_sink_manager.write_record(record);
   }
 }
 
 // -----------------------------------------------------------------------------
+/// signal a potentially erroneous condition
 void warning(StringFunction auto message_function,
              const source_location& source_location = source_location::current())
 {
-  if constexpr (!(g_build_mode == BuildMode::Dev || g_build_mode == BuildMode::Test)) {
-    return;
-  } else {
+  if constexpr (g_build_mode == BuildMode::Dev || g_build_mode == BuildMode::Test) {
     std::shared_ptr<Record> record =
-        get_event_record(source_location, get_uuid(), "log", "warning", message_function());
+        get_event_record(source_location, EventCategory::Log, Event::Warning,
+                         UUID::get_nil(), 0, message_function());
     sink::g_sink_manager.write_record(record);
   }
 }
@@ -71,43 +71,39 @@ namespace giopler::prod
 {
 
 // -----------------------------------------------------------------------------
-void error(const std::string_view message,
+/// signal a definitely erroneous condition
+void error(const std::string_view message = ""sv,
            const source_location& source_location = source_location::current())
 {
-  if constexpr (g_build_mode == BuildMode::Off) {
-    return;
-  } else {
+  if constexpr (g_build_mode != BuildMode::Off) {
     std::shared_ptr<Record> record =
-        get_event_record(source_location, get_uuid(), "log", "error", 0, message);
-    record->insert({{"val.message", message}});
+        get_event_record(source_location, EventCategory::Log, Event::Error,
+                         UUID::get_nil(), 0, message);
     sink::g_sink_manager.write_record(record);
   }
 }
 
 // -----------------------------------------------------------------------------
+/// signal a definitely erroneous condition
 void error(StringFunction auto message_function,
            const source_location& source_location = source_location::current())
 {
-  if constexpr (g_build_mode == BuildMode::Off) {
-    return;
-  } else {
+  if constexpr (g_build_mode != BuildMode::Off) {
     std::shared_ptr<Record> record =
-        get_event_record(source_location, get_uuid(), "log", "error", message_function());
-    record->insert({{"val.message", message_function()}});
+        get_event_record(source_location, EventCategory::Log, Event::Error,
+                         UUID::get_nil(), 0, message_function());
     sink::g_sink_manager.write_record(record);
   }
 }
 
 // -----------------------------------------------------------------------------
-void message(const std::string_view message,
+void message(const std::string_view message = ""sv,
              const source_location& source_location = source_location::current())
 {
-  if constexpr (g_build_mode == BuildMode::Off) {
-    return;
-  } else {
+  if constexpr (g_build_mode != BuildMode::Off) {
     std::shared_ptr<Record> record =
-        get_event_record(source_location, get_uuid(), "log", "message", 0, message);
-    record->insert({{"val.message", message}});
+        get_event_record(source_location, EventCategory::Log, Event::Message,
+                         UUID::get_nil(), 0, message);
     sink::g_sink_manager.write_record(record);
   }
 }
@@ -116,12 +112,10 @@ void message(const std::string_view message,
 void message(StringFunction auto message_function,
              const source_location& source_location = source_location::current())
 {
-  if constexpr (g_build_mode == BuildMode::Off) {
-    return;
-  } else {
+  if constexpr (g_build_mode != BuildMode::Off) {
     std::shared_ptr<Record> record =
-        get_event_record(source_location, get_uuid(), "log", "message", message_function());
-    record->insert({{"val.message", message_function()}});
+        get_event_record(source_location, EventCategory::Log, Event::Message,
+                         UUID::get_nil(), 0, message_function());
     sink::g_sink_manager.write_record(record);
   }
 }

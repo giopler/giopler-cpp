@@ -301,47 +301,68 @@ std::string format_source_location(const source_location &location)
 }
 
 // -----------------------------------------------------------------------------
-// Generator Version 4 Variant 1 UUIDs from random values
-// can produce about 7 million UUIDs per second (per CPU core)
-// https://stackoverflow.com/questions/24365331/how-can-i-generate-uuid-in-c-without-using-boost-library
-// https://datatracker.ietf.org/doc/html/rfc4122
-// https://en.wikipedia.org/wiki/Universally_unique_identifier
-// cat /proc/sys/kernel/random/uuid
-std::string get_uuid()
+/// make UUID type safe
+class UUID
 {
-    static constexpr auto UUID_LEN = 36;   // 5c47ba38-3e2b-48b1-988e-f16921213939
-    static const char hex_char[] =
-      {'0', '1',  '2',  '3',  '4',  '5', '6',  '7',
-       '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
-    static thread_local pcg                               gen;
-    static thread_local std::uniform_int_distribution<> hex_digit(0, 15);
-    static thread_local std::uniform_int_distribution<>   variant(8, 11);
+ public:
+    UUID() : _value{get_uuid()} { }
 
-    std::string result;
-    result.reserve(UUID_LEN);
-    for (int i = 0; i < 8; ++i) {
-      result.push_back(hex_char[hex_digit(gen)]);
+    UUID(std::string_view uuid_string) : _value{uuid_string} { }
+
+    [[nodiscard]] std::string get_string() const { return _value; }
+
+    static UUID get_nil() {
+      return UUID{"00000000-0000-0000-0000-000000000000"s};
     }
-    result.push_back('-');
-    for (int i = 0; i < 4; ++i) {
-      result.push_back(hex_char[hex_digit(gen)]);
-    }
-    result.push_back('-');
-    result.push_back('4');
-    for (int i = 0; i < 3; ++i) {
-      result.push_back(hex_char[hex_digit(gen)]);
-    }
-    result.push_back('-');
-    result.push_back(hex_char[variant(gen)]);
-    for (int i = 0; i < 3; ++i) {
-      result.push_back(hex_char[hex_digit(gen)]);
-    }
-    result.push_back('-');
-    for (int i = 0; i < 12; ++i) {
-      result.push_back(hex_char[hex_digit(gen)]);
-    };
-    return result;
-}
+
+ private:
+  std::string _value;
+
+  // ---------------------------------------------------------------------------
+  // Generator Version 4 (random) Variant 1 (RFC 4122/DCE 1.1) UUIDs from random values
+  // can produce about 7 million UUIDs per second (per CPU core)
+  // https://stackoverflow.com/questions/24365331/how-can-i-generate-uuid-in-c-without-using-boost-library
+  // https://datatracker.ietf.org/doc/html/rfc4122
+  // https://en.wikipedia.org/wiki/Universally_unique_identifier
+  // cat /proc/sys/kernel/random/uuid
+  // sample: 8e08aa0f-8024-4e31-8400-e75cd1217239
+  std::string get_uuid()
+  {
+      static constexpr auto UUID_LEN = 36;   // 5c47ba38-3e2b-48b1-988e-f16921213939
+      static const char hex_char[] =
+        {'0', '1',  '2',  '3',  '4',  '5', '6',  '7',
+         '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
+      static thread_local pcg                               gen;
+      static thread_local std::uniform_int_distribution<> hex_digit(0, 15);
+      static thread_local std::uniform_int_distribution<>   variant(8, 11);
+
+      std::string result;
+      result.reserve(UUID_LEN);
+      for (int i = 0; i < 8; ++i) {
+        result.push_back(hex_char[hex_digit(gen)]);
+      }
+      result.push_back('-');
+      for (int i = 0; i < 4; ++i) {
+        result.push_back(hex_char[hex_digit(gen)]);
+      }
+      result.push_back('-');
+      result.push_back('4');
+      for (int i = 0; i < 3; ++i) {
+        result.push_back(hex_char[hex_digit(gen)]);
+      }
+      result.push_back('-');
+      result.push_back(hex_char[variant(gen)]);
+      for (int i = 0; i < 3; ++i) {
+        result.push_back(hex_char[hex_digit(gen)]);
+      }
+      result.push_back('-');
+      for (int i = 0; i < 12; ++i) {
+        result.push_back(hex_char[hex_digit(gen)]);
+      };
+      return result;
+  }
+
+};
 
 // -----------------------------------------------------------------------------
 /// helper to create a string hash from a string
