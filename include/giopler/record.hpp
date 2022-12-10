@@ -313,76 +313,6 @@ class RecordValue
 };
 
 // -----------------------------------------------------------------------------
-/// User-defined attributes
-// these are automatically included with events sent
-// we update a copy of the parent object, so it contains all active attributes
-// this way we avoid a potential long recursive loop on every data request
-class Attributes
-{
-public:
-  Attributes(const RecordInitList& attribute_init)
-  : _parent_attributes{_attributes},
-    _data{_attributes ? _attributes->_data : std::make_shared<Record>()}
-  {
-    _attributes = this;
-
-    for (const auto& [key, value] : attribute_init) {
-      (*_data)[key] = to_json_string(value);
-    }
-  }
-
-  ~Attributes() {
-      _attributes = _parent_attributes;
-  }
-
-  static std::shared_ptr<giopler::Record> get_attributes_record() {
-    return _attributes ? _attributes->_data : std::make_shared<Record>();
-  }
-
-private:
-  static inline thread_local Attributes* _attributes = nullptr;
-  Attributes* _parent_attributes;
-  std::shared_ptr<giopler::Record> _data;
-
-  /// force the attribute value to be a JSON string
-  static std::string to_json_string(const RecordValue& value) {
-    switch (value.get_type()) {
-      case RecordValue::Type::Boolean: {
-        return format("\"{}\"", value.get_boolean());
-      }
-
-      case RecordValue::Type::Integer: {
-        return format("\"{}\"", value.get_integer());
-      }
-
-      case RecordValue::Type::Real: {
-        return format("\"{}\"", value.get_real());
-      }
-
-      case RecordValue::Type::String: {
-        return format("\"{}\"", value.get_string());
-      }
-
-      case RecordValue::Type::Timestamp: {   // not sure if this is needed
-        return format("\"{}\"", format_timestamp(value.get_timestamp()));
-      }
-
-      case RecordValue::Type::Record: {
-        assert(false);
-      }
-
-      case RecordValue::Type::Array: {
-        assert(false);
-      }
-
-      case RecordValue::Type::Empty: {
-        return "\"null\"";
-      }
-    }
-  }
-};
-
-// -----------------------------------------------------------------------------
 void record_value_to_json(const RecordValue& value, std::stringstream& buffer)
 {
     switch (value.get_type()) {
@@ -456,6 +386,45 @@ void record_value_to_json(const RecordValue& value, std::stringstream& buffer)
 }
 
 // -----------------------------------------------------------------------------
+/// convert the record value to a string
+// does not support nested Array or Record values
+std::string record_value_to_string(const RecordValue& value) {
+  switch (value.get_type()) {
+    case RecordValue::Type::Boolean: {
+      return format("\"{}\"", value.get_boolean());
+    }
+
+    case RecordValue::Type::Integer: {
+      return format("\"{}\"", value.get_integer());
+    }
+
+    case RecordValue::Type::Real: {
+      return format("\"{}\"", value.get_real());
+    }
+
+    case RecordValue::Type::String: {
+      return format("\"{}\"", value.get_string());
+    }
+
+    case RecordValue::Type::Timestamp: {   // not sure if this is needed
+      return format("\"{}\"", format_timestamp(value.get_timestamp()));
+    }
+
+    case RecordValue::Type::Record: {
+      assert(false);
+    }
+
+    case RecordValue::Type::Array: {
+      assert(false);
+    }
+
+    case RecordValue::Type::Empty: {
+      return "\"null\"";
+    }
+  }
+}
+
+// -----------------------------------------------------------------------------
 /// convert a Record to a JSON string
 std::string record_to_json(std::shared_ptr<Record> record)
 {
@@ -470,6 +439,54 @@ UUID get_run_id() {
   static const UUID run_id{UUID{}};
   return run_id;
 }
+
+// -----------------------------------------------------------------------------
+}   // namespace giopler
+
+
+// -----------------------------------------------------------------------------
+namespace giopler::dev {
+
+// -----------------------------------------------------------------------------
+/// User-defined attributes
+// these are automatically included with events sent
+// we update a copy of the parent object, so it contains all active attributes
+// this way we avoid a potential long recursive loop on every data request
+// we convert all the values to JSON strings before storing them
+// it is safe to share the _data pointer because it is not modified after created
+class Attributes final
+{
+public:
+  Attributes(const RecordInitList& attribute_init)
+  : _parent_attributes{_attributes},
+    _data{_attributes ? _attributes->_data : std::make_shared<Record>()}
+  {
+    _attributes = this;
+
+    for (const auto& [key, value] : attribute_init) {
+      (*_data)[key] = record_value_to_string(value);
+    }
+  }
+
+  ~Attributes() {
+    _attributes = _parent_attributes;
+  }
+
+  static std::shared_ptr<giopler::Record> get_attributes_record() {
+    return _attributes ? _attributes->_data : std::make_shared<Record>();
+  }
+
+private:
+  static inline thread_local Attributes* _attributes = nullptr;
+  Attributes* _parent_attributes;
+  std::shared_ptr<giopler::Record> _data;
+};
+
+// -----------------------------------------------------------------------------
+}   // namespace giopler::dev
+
+// -----------------------------------------------------------------------------
+namespace giopler {
 
 // -----------------------------------------------------------------------------
 /// read program-wide variables
@@ -495,8 +512,8 @@ std::shared_ptr<Record> get_program_record() {
 
 // -----------------------------------------------------------------------------
 std::shared_ptr<Record> get_event_record(const source_location& source_location,
-                                         EventCategory event_category,
-                                         Event event,
+                                         const EventCategory event_category,
+                                         const Event event,
                                          const UUID& event_object_id = UUID::get_nil(),
                                          const double workload = 0,
                                          const std::string_view message = ""sv)
@@ -519,12 +536,13 @@ std::shared_ptr<Record> get_event_record(const source_location& source_location,
       {"evt.available_memory"s,   get_available_memory()},
 
       {"evt.workload"s,           workload},
-      {"evt.message"s,            message}
+      {"evt.message"s,            message},
+      {"evt.attributes"s,         giopler::dev::Attributes::get_attributes_record()}
   });
 }
 
 // -----------------------------------------------------------------------------
-}   // namespace giopler::sink
+}   // namespace giopler
 
 // -----------------------------------------------------------------------------
 /// hash function for RecordValue
