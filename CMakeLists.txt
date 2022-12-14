@@ -52,27 +52,28 @@ endif()
 find_package(OpenSSL REQUIRED COMPONENTS Crypto SSL)
 include_directories(${OPENSSL_INCLUDE_DIR})
 list(APPEND GIOPLER_LIBRARIES ${OPENSSL_LIBRARIES})
+if(NOT OpenSSL_FOUND)
+message(ERROR OpenSSL library is required.)
+endif()
 
 # ------------------------------------------------------------------------------
-find_package(Brotli QUIET)
-if(BROTLI_FOUND)
-  include_directories(${BROTLI_INCLUDE_DIRS})
-  list(APPEND GIOPLER_LIBRARIES ${BROTLI_LIBRARIES})
-  add_compile_definitions(PRIVATE GIOPLER_HAVE_BROTLI=1)
-else()
-  message(WARNING "Brotli library not found. Although not required, it is very helpful when communicating with the Giopler server.")
+# cmake_modules/FindBrotli.cmake
+# https://github.com/google/brotli/
+find_package(Brotli REQUIRED)
+include_directories(${BROTLI_INCLUDE_DIRS})
+list(APPEND GIOPLER_LIBRARIES ${BROTLI_LIBRARIES})
+if(NOT BROTLI_FOUND)
+message(ERROR Brotli compression library is required.)
 endif()
 
 # ------------------------------------------------------------------------------
 # http://mariobadr.com/creating-a-header-only-library-with-cmake.html
 # https://dominikberner.ch/cmake-interface-lib/
 # https://www.cppengineer.com/blog/using-cmake-to-create-header-only-shared-and-static-libraries
+# Usage:   target_link_libraries(your_app_or_lib PRIVATE ${GIOPLER_LIBRARIES})
 add_library(giopler INTERFACE)
 target_include_directories(giopler INTERFACE "$<BUILD_INTERFACE:${Giopler_SOURCE_DIR}/include>")
 list(APPEND GIOPLER_LIBRARIES giopler)
-
-# Usage:
-# target_link_libraries(your_app_or_lib PRIVATE ${GIOPLER_LIBS})
 
 # ------------------------------------------------------------------------------
 file(GLOB TEST_SOURCE_LIST CONFIGURE_DEPENDS "${Giopler_SOURCE_DIR}/test/*.cpp")

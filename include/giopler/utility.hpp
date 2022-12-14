@@ -253,9 +253,9 @@ public:
   constexpr source_location(const char* file,
                             const char* function,
                             const int line)
-    : _file_name(file),
-      _function_name(function),
-      _line(line)
+    : file_name_(file),
+      function_name_(function),
+      line_(line)
   {}
 
   source_location(const source_location& other) = default;
@@ -270,21 +270,21 @@ public:
   }
 
   [[nodiscard]] constexpr const char* file_name() const {
-    return _file_name;
+    return file_name_;
   }
 
   [[nodiscard]] constexpr const char* function_name() const {
-    return _function_name;
+    return function_name_;
   }
 
   [[nodiscard]] constexpr int line() const {
-    return _line;
+    return line_;
   }
 
  private:
-  const char* _file_name;
-  const char* _function_name;
-  const int _line;
+  const char* file_name_;
+  const char* function_name_;
+  const int line_;
 };
 
 // -----------------------------------------------------------------------------
@@ -305,18 +305,18 @@ std::string format_source_location(const source_location &location)
 class UUID
 {
  public:
-    UUID() : _value{get_uuid()} { }
+    UUID() : value_{get_uuid()} { }
 
-    UUID(std::string_view uuid_string) : _value{uuid_string} { }
+    UUID(std::string_view uuid_string) : value_{uuid_string} { }
 
-    [[nodiscard]] std::string get_string() const { return _value; }
+    [[nodiscard]] std::string get_string() const { return value_; }
 
     static UUID get_nil() {
       return UUID{"00000000-0000-0000-0000-000000000000"s};
     }
 
  private:
-  std::string _value;
+  std::string value_;
 
   // ---------------------------------------------------------------------------
   // Generator Version 4 (random) Variant 1 (RFC 4122/DCE 1.1) UUIDs from random values
@@ -372,10 +372,21 @@ std::string hash_string(std::string_view id) {
 }
 
 // -----------------------------------------------------------------------------
+/// typesafe declaration for a function without parameters that returns a boolean
+// Usage:
+//   fn(BoolFunction auto input_bool_func)
+//   bool input_bool_func()
+template <typename F>
+concept BoolFunction = requires (F f) {
+    requires std::regular_invocable<F>;
+    {f()} -> std::convertible_to<bool>;
+};
+
+// -----------------------------------------------------------------------------
 /// typesafe declaration for a function without parameters that returns a string
 // Usage:
 //   fn(StringFunction auto input_string_func)
-//   input_string_func()
+//   std::string input_string_func()
 template <typename F>
 concept StringFunction = requires (F f) {
     requires std::regular_invocable<F>;

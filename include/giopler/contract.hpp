@@ -157,7 +157,7 @@ class Invariant final {
   Invariant() = delete;
 
   // check invariant on scope entry
-  explicit Invariant([[maybe_unused]] std::function<bool()> condition_function,
+  explicit Invariant([[maybe_unused]] BoolFunction auto condition_function,
             [[maybe_unused]] const source_location& source_location =
               source_location::current())
   : _uncaught_exceptions(std::uncaught_exceptions()),
@@ -218,7 +218,7 @@ class Ensure final {
  public:
   Ensure() = delete;
 
-  explicit Ensure([[maybe_unused]] std::function<bool()> condition_function,
+  explicit Ensure([[maybe_unused]] BoolFunction auto condition_function,
          [[maybe_unused]] const source_location& source_location =
           source_location::current())
   : _uncaught_exceptions(std::uncaught_exceptions()),

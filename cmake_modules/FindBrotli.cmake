@@ -1,4 +1,5 @@
 # CMake find_package module for the Google Brotli compression utility
+# https://github.com/google/brotli/
 
 include(FindPackageHandleStandardArgs)
 
@@ -17,7 +18,7 @@ find_package_handle_standard_args(Brotli
       BROTLICOMMON_LIBRARY
       BROTLI_INCLUDE_DIR
     FAIL_MESSAGE
-      "Could NOT find BROTLI"
+      "Could NOT find BROTLI compression program and library"
 )
 
 set(BROTLI_INCLUDE_DIRS ${BROTLI_INCLUDE_DIR})
