@@ -30,7 +30,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)   # require C++20
 set(CMAKE_CXX_EXTENSIONS OFF)         # turn off GNU compiler extensions
 
 project(Giopler-Cpp
-  VERSION 0.1.1
+  VERSION 0.2.0
   DESCRIPTION "A profiling, logging, and testing library for C++20"
   HOMEPAGE_URL "https://github.com/gioppler/gioppler"
   LANGUAGES CXX)
@@ -42,29 +42,30 @@ set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules;${CMAKE_MODULE_
 # https://cmake.org/cmake/help/latest/module/FindThreads.html
 set (THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
-list(APPEND GIOPLER_LIBRARIES Threads::Threads)
 if(NOT Threads_FOUND)
 message(ERROR A threading library is required.)
 endif()
+list(APPEND GIOPLER_LIBRARIES Threads::Threads)
 
 # ------------------------------------------------------------------------------
 # https://cmake.org/cmake/help/latest/module/FindOpenSSL.html
 find_package(OpenSSL REQUIRED COMPONENTS Crypto SSL)
-include_directories(${OPENSSL_INCLUDE_DIR})
-list(APPEND GIOPLER_LIBRARIES ${OPENSSL_LIBRARIES})
 if(NOT OpenSSL_FOUND)
 message(ERROR OpenSSL library is required.)
 endif()
+include_directories(${OPENSSL_INCLUDE_DIR})
+list(APPEND GIOPLER_LIBRARIES ${OPENSSL_LIBRARIES})
 
 # ------------------------------------------------------------------------------
 # cmake_modules/FindBrotli.cmake
 # https://github.com/google/brotli/
 find_package(Brotli REQUIRED)
-include_directories(${BROTLI_INCLUDE_DIRS})
-list(APPEND GIOPLER_LIBRARIES ${BROTLI_LIBRARIES})
 if(NOT BROTLI_FOUND)
 message(ERROR Brotli compression library is required.)
 endif()
+include_directories(${BROTLI_INCLUDE_DIRS})
+list(APPEND GIOPLER_LIBRARIES ${BROTLI_LIBRARIES})
+add_compile_definitions(PRIVATE GIOPLER_HAVE_BROTLI=1)
 
 # ------------------------------------------------------------------------------
 # http://mariobadr.com/creating-a-header-only-library-with-cmake.html

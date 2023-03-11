@@ -45,12 +45,13 @@ namespace giopler::dev {
 class Trace final
 {
  public:
-  explicit Trace(UUID object_id)
-  : _object_id{std::move(object_id)}
+  explicit Trace(UUID object_id, const char* function_name)
+  : _object_id{std::move(object_id)}, _function_name(function_name)
   {
     _stack_depth++;
     _parent_trace_object  = _trace_object;
     _trace_object         = this;
+    if (_parent_trace_object)   _parent_trace_object->_is_leaf = false;   // by definition
   }
 
   ~Trace() {
@@ -58,10 +59,10 @@ class Trace final
     _stack_depth--;
   }
 
-  /// generates the JSON compatible function call stack
-  // [0] = thread
-  // [<thread exit event id>, <function exit event id>, ...]
-  std::shared_ptr<giopler::Array> get_stack_array() {
+  /// generates the JSON compatible function id call stack
+  // [0]=thread, [_stack_depth-1]=current function
+  // [<thread start event id>, <function start event id>, ...]
+  std::shared_ptr<giopler::Array> get_object_ids() {
     std::shared_ptr<giopler::Array> stack;
     stack->reserve(_stack_depth);
     std::size_t current_stack_frame = _stack_depth-1;
@@ -75,11 +76,35 @@ class Trace final
     return stack;
   }
 
+  /// generates the JSON compatible function id call stack
+  // [0]=thread, [_stack_depth-1]=current function
+  // [<thread start event id>, <function start event id>, ...]
+  std::shared_ptr<giopler::Array> get_function_names() {
+    std::shared_ptr<giopler::Array> stack;
+    stack->reserve(_stack_depth);
+    std::size_t current_stack_frame = _stack_depth-1;
+    Trace* trace_object             = this;
+
+    while (trace_object) {
+      (*stack)[current_stack_frame--] = trace_object->_function_name;
+      trace_object                    = trace_object->_parent_trace_object;
+    }
+
+    return stack;
+  }
+
+  /// true=this function did not have any children function calls
+  bool is_leaf() const {
+    return _is_leaf;
+  }
+
  private:
   static inline thread_local Trace* _trace_object       = nullptr;
   static inline thread_local std::uint32_t _stack_depth = 0;
   Trace* _parent_trace_object;
   UUID _object_id;
+  const char* _function_name;
+  bool _is_leaf = true;   // assume true until we know otherwise
 };
 
 // -----------------------------------------------------------------------------
@@ -152,23 +177,23 @@ class Program final
  public:
     explicit Program([[maybe_unused]] giopler::source_location source_location = giopler::source_location::current())
     {
-      if constexpr (g_build_mode == BuildMode::Dev || g_build_mode == BuildMode::Prof || g_build_mode == BuildMode::Bench) {
+      if constexpr (g_build_mode != BuildMode::Off) {
         _data = std::make_unique<ProgramData>();
         _data->_source_location = std::make_unique<giopler::source_location>(source_location);
 
         std::shared_ptr<Record> record_begin =
             get_event_record(source_location, EventCategory::Profile, Event::ProgramBegin,
-                             _data->_object_id);
-        record_begin->insert({{"program"s, get_program_record()}});
+                             _data->_begin_id);
+        record_begin->insert({{"run"s, get_program_record()}});
         sink::g_sink_manager.write_record(record_begin);
       }
     }
 
     ~Program() {
-      if constexpr (g_build_mode == BuildMode::Dev || g_build_mode == BuildMode::Prof || g_build_mode == BuildMode::Bench) {
+      if constexpr (g_build_mode != BuildMode::Off) {
         std::shared_ptr<Record> record_end =
             get_event_record(*(_data->_source_location), EventCategory::Profile, Event::ProgramEnd,
-                             _data->_object_id);
+                             UUID(), _data->_begin_id);
 
         sink::g_sink_manager.write_record(record_end);
       }
@@ -177,7 +202,7 @@ class Program final
  private:
   struct ProgramData {
       std::unique_ptr<giopler::source_location> _source_location;
-      UUID _object_id;
+      UUID _begin_id;
   };
 
   // use a data object to help minimize impact when not enabled
@@ -205,11 +230,13 @@ class Thread final
         }
 
         _data->_source_location = std::make_unique<giopler::source_location>(source_location);
-        _data->_trace           = std::make_unique<Trace>(_data->_object_id);
+        _data->_trace           = std::make_unique<Trace>(_data->_begin_id, "<thread>");
 
         std::shared_ptr<Record> record_begin =
             get_event_record(source_location, EventCategory::Profile, Event::ThreadBegin,
-                             _data->_object_id);
+                             _data->_begin_id);
+        record_begin->insert({{"oids"s, _data->_trace->get_object_ids()}});
+        record_begin->insert({{"funcs"s, _data->_trace->get_function_names()}});
         sink::g_sink_manager.write_record(record_begin);
       }
     }
@@ -218,11 +245,11 @@ class Thread final
       if constexpr (g_build_mode == BuildMode::Dev || g_build_mode == BuildMode::Prof || g_build_mode == BuildMode::Bench) {
         std::shared_ptr<Record> record_end =
             get_event_record(*(_data->_source_location), EventCategory::Profile, Event::ThreadEnd,
-                             _data->_object_id);
+                             UUID(), _data->_begin_id);
 
         if constexpr (g_build_mode == BuildMode::Prof || g_build_mode == BuildMode::Bench) {
-          record_end->insert({{"prof_linux.total"s, _data->_profile->get_total_counters_record()}});
-          record_end->insert({{"prof_linux.self"s,  _data->_profile->get_self_counters_record()}});
+          record_end->insert({{"prof_tot"s, _data->_profile->get_total_counters_record()}});
+          record_end->insert({{"prof_self"s,  _data->_profile->get_self_counters_record()}});
         }
 
         sink::g_sink_manager.write_record(record_end);
@@ -232,7 +259,7 @@ class Thread final
  private:
   struct ThreadData {
       std::unique_ptr<giopler::source_location> _source_location;
-      UUID _object_id;
+      UUID _begin_id;
       std::unique_ptr<Trace> _trace;
       std::unique_ptr<Profile> _profile;
   };
@@ -270,12 +297,13 @@ class Function final
 
         _data->_source_location = std::make_unique<giopler::source_location>(source_location);
         _data->_workload        = workload;
-        _data->_trace           = std::make_unique<Trace>(_data->_object_id);
+        _data->_trace           = std::make_unique<Trace>(_data->_begin_id, _data->_source_location->function_name());
 
         std::shared_ptr<Record> record_begin =
             get_event_record(source_location, EventCategory::Profile, Event::FunctionBegin,
-                             _data->_object_id, workload);
-        record_begin->insert({{"stack"s, _data->_trace->get_stack_array()}});
+                             _data->_begin_id, UUID::get_nil(), workload);
+        record_begin->insert({{"oids"s, _data->_trace->get_object_ids()}});
+        record_begin->insert({{"funcs"s, _data->_trace->get_function_names()}});
         sink::g_sink_manager.write_record(record_begin);
       }
     }
@@ -284,11 +312,11 @@ class Function final
       if constexpr (g_build_mode == BuildMode::Dev || g_build_mode == BuildMode::Prof || g_build_mode == BuildMode::Bench) {
         std::shared_ptr<Record> record_end =
             get_event_record(*(_data->_source_location), EventCategory::Profile, Event::FunctionEnd,
-                             _data->_object_id, _data->_workload);
+                             UUID(), _data->_begin_id, _data->_workload, _data->_trace->is_leaf());
 
         if constexpr (g_build_mode == BuildMode::Prof) {
-          record_end->insert({{"prof_linux.total"s, _data->_profile->get_total_counters_record()}});
-          record_end->insert({{"prof_linux.self"s,  _data->_profile->get_self_counters_record()}});
+          record_end->insert({{"prof_tot"s, _data->_profile->get_total_counters_record()}});
+          record_end->insert({{"prof_self"s,  _data->_profile->get_self_counters_record()}});
         }
 
         sink::g_sink_manager.write_record(record_end);
@@ -298,7 +326,7 @@ class Function final
  private:
   struct FunctionData {
       std::unique_ptr<giopler::source_location> _source_location;
-      UUID _object_id;
+      UUID _begin_id;
       double _workload{};
       std::unique_ptr<Trace> _trace;
       std::unique_ptr<Profile> _profile;
@@ -324,7 +352,7 @@ class Object final
 
         std::shared_ptr<Record> record_begin =
             get_event_record(source_location, EventCategory::Profile, Event::ObjectBegin,
-                             _data->_object_id);
+                             _data->_begin_id);
         sink::g_sink_manager.write_record(record_begin);
       }
     }
@@ -333,7 +361,7 @@ class Object final
       if constexpr (g_build_mode == BuildMode::Dev || g_build_mode == BuildMode::Prof) {
         std::shared_ptr<Record> record_end =
             get_event_record(*(_data->_source_location), EventCategory::Profile, Event::ObjectEnd,
-                             _data->_object_id);
+                             UUID(), _data->_begin_id);
 
         sink::g_sink_manager.write_record(record_end);
       }
@@ -342,7 +370,7 @@ class Object final
  private:
   struct ObjectData {
       std::unique_ptr<giopler::source_location> _source_location;
-      UUID _object_id;
+      UUID _begin_id;
   };
 
   // use a data object to help minimize impact when not enabled

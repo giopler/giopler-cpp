@@ -45,8 +45,8 @@ void line([[maybe_unused]] const std::string_view message = ""sv,
 {
   if constexpr (g_build_mode == BuildMode::Dev) {
     std::shared_ptr<Record> record =
-        get_event_record(source_location, EventCategory::Trace, Event::Line,
-                         UUID::get_nil(), 0, message);
+        get_event_record(source_location, EventCategory::Trace, Event::Line, UUID(),
+                         UUID::get_nil(), 0, false, message);
     sink::g_sink_manager.write_record(record);
   }
 }
@@ -59,8 +59,8 @@ void line([[maybe_unused]] StringFunction auto message_function,
 {
   if constexpr (g_build_mode == BuildMode::Dev) {
     std::shared_ptr<Record> record =
-        get_event_record(source_location, EventCategory::Trace, Event::Line,
-                         UUID::get_nil(), 0, message_function());
+        get_event_record(source_location, EventCategory::Trace, Event::Line, UUID(),
+                         UUID::get_nil(), 0, false, message_function());
     sink::g_sink_manager.write_record(record);
   }
 }
@@ -123,8 +123,8 @@ void branch([[maybe_unused]] const std::string_view message = ""sv,
 {
   if constexpr (g_build_mode != BuildMode::Off) {
     std::shared_ptr<Record> record =
-        get_event_record(source_location, EventCategory::Trace, Event::Branch,
-                         UUID::get_nil(), 0, message);
+        get_event_record(source_location, EventCategory::Trace, Event::Branch, UUID(),
+                         UUID::get_nil(), 0, false, message);
     sink::g_sink_manager.write_record(record);
   }
 }
@@ -135,8 +135,8 @@ void branch([[maybe_unused]] StringFunction auto message_function,
 {
   if constexpr (g_build_mode != BuildMode::Off) {
     std::shared_ptr<Record> record =
-        get_event_record(source_location, EventCategory::Trace, Event::Branch,
-                         UUID::get_nil(), 0, message_function());
+        get_event_record(source_location, EventCategory::Trace, Event::Branch, UUID(),
+                         UUID::get_nil(), 0, false,message_function());
     sink::g_sink_manager.write_record(record);
   }
 }

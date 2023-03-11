@@ -441,11 +441,78 @@ UUID get_run_id() {
 }
 
 // -----------------------------------------------------------------------------
+/// returns a value that increments once per call per thread
+// useful as a fine-grained sequencing value for events within a thread
+// timestamp values do not always have enough accuracy
+int64_t get_thread_sequence() {
+  static thread_local int64_t sequence = 0;
+  return sequence++;
+}
+
+// -----------------------------------------------------------------------------
 }   // namespace giopler
 
 
 // -----------------------------------------------------------------------------
 namespace giopler::dev {
+
+// -----------------------------------------------------------------------------
+/// set a thread-global class value
+// use with a hierarchical dot-separated list of identifiers
+// examples: "init.db", "disk.write.widget"
+// intended to be used similarly to the HTML 'class' attribute
+class Class final
+{
+ public:
+  explicit Class(std::string_view class_value)
+  : _parent_class{_current_class},
+    _class_value{class_value}
+  {
+    _current_class = this;
+  }
+
+  ~Class() {
+    _current_class = _parent_class;
+  }
+
+  static std::string get_class() {
+    return _current_class ? _current_class->_class_value : "";
+  }
+
+ private:
+  static inline thread_local Class* _current_class = nullptr;
+  Class* _parent_class;
+  std::string _class_value;
+};
+
+// -----------------------------------------------------------------------------
+/// set a thread-global id value
+// assign a unique value to it
+// examples: "cust.12345", "frame.3232"
+// intended to be used similarly to the HTML 'id' attribute
+class Id final
+{
+ public:
+  explicit Id(std::string_view id_value)
+  : _parent_id{_current_id},
+    _id_value{id_value}
+  {
+    _current_id = this;
+  }
+
+  ~Id() {
+    _current_id = _parent_id;
+  }
+
+  static std::string get_id() {
+    return _current_id ? _current_id->_id_value : "";
+  }
+
+ private:
+  static inline thread_local Id* _current_id = nullptr;
+  Id* _parent_id;
+  std::string _id_value;
+};
 
 // -----------------------------------------------------------------------------
 /// User-defined attributes
@@ -457,7 +524,7 @@ namespace giopler::dev {
 class Attributes final
 {
 public:
-  Attributes(const RecordInitList& attribute_init)
+  explicit Attributes(const RecordInitList& attribute_init)
   : _parent_attributes{_attributes},
     _data{_attributes ? _attributes->_data : std::make_shared<Record>()}
   {
@@ -493,7 +560,7 @@ namespace giopler {
 // these values are constant per program run
 std::shared_ptr<Record> get_program_record() {
   return std::make_shared<Record>(Record{
-      {"prog.start_ts"s,            now()},
+      {"prog.start_ts"s,            start_time},
       {"prog.memory_page_size"s,    get_memory_page_size()},
       {"prog.physical_memory"s,     get_physical_memory()},
       {"prog.total_cpu_cores"s,     get_total_cpu_cores()},
@@ -514,30 +581,38 @@ std::shared_ptr<Record> get_program_record() {
 std::shared_ptr<Record> get_event_record(const source_location& source_location,
                                          const EventCategory event_category,
                                          const Event event,
-                                         const UUID& event_object_id = UUID::get_nil(),
+                                         const UUID& event_id = UUID(),
+                                         const UUID& event_begin_id = UUID::get_nil(),
                                          const double workload = 0,
+                                         const bool is_leaf = false,
                                          const std::string_view message = ""sv)
 {
   return std::make_shared<Record>(Record{
-      {"prog.run_id"s,            get_run_id().get_string()},
+      {"run_id"s,             get_run_id().get_string()},
+      {"event_id"s,           event_id.get_string()},
 
-      {"evt.event_category"s,     get_event_category_name(event_category)},
-      {"evt.event"s,              get_event_name(event)},
-      {"evt.event_object_id"s,    event_object_id.get_string()},
+      {"event_cat"s,          get_event_category_name(event_category)},
+      {"event"s,              get_event_name(event)},
+      {"begin_id"s,           event_begin_id.get_string()},
 
-      {"evt.file"s,               source_location.file_name()},
-      {"evt.line"s,               source_location.line()},
-      {"evt.function"s,           source_location.function_name()},
+      {"time_diff"s,          get_time_delta()},
+      {"thrd_seq"s,           get_thread_sequence()},
 
-      {"evt.timestamp"s,          now()},
-      {"evt.thread_id"s,          get_thread_id()},
-      {"evt.node_id"s,            get_node_id()},
-      {"evt.cpu_id"s,             get_cpu_id()},
-      {"evt.available_memory"s,   get_available_memory()},
+      {"file"s,               source_location.file_name()},
+      {"line"s,               source_location.line()},
+      {"func"s,               source_location.function_name()},
+      {"msg"s,                message},
 
-      {"evt.workload"s,           workload},
-      {"evt.message"s,            message},
-      {"evt.attributes"s,         giopler::dev::Attributes::get_attributes_record()}
+      {"thrd_id"s,            get_thread_id()},
+      {"node_id"s,            get_node_id()},
+      {"cpu_id"s,             get_cpu_id()},
+      {"avail_mem"s,          get_available_memory()},
+
+      {"clss"s,               giopler::dev::Class::get_class()},
+      {"id"s,                 giopler::dev::Id::get_id()},
+      {"wrkld"s,              workload},
+      {"is_leaf"s,            is_leaf}
+      //{"attributes"s,         giopler::dev::Attributes::get_attributes_record()}
   });
 }
 

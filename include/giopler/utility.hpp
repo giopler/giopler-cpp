@@ -195,6 +195,9 @@ Timestamp now() {
 }
 
 // -----------------------------------------------------------------------------
+static inline const Timestamp start_time = now();
+
+// -----------------------------------------------------------------------------
 /// convert the given Timestamp into nanoseconds
 std::uint64_t to_nanoseconds(const Timestamp ts) {
   const std::uint64_t timestamp_ns =
@@ -216,6 +219,12 @@ double timestamp_diff(const Timestamp start, const Timestamp end) {
   const std::uint64_t timestamp_end_ns   = to_nanoseconds(end);
   const std::uint64_t delta_ns           = timestamp_end_ns - timestamp_start_ns;
   return static_cast<double>(delta_ns) / 1'000'000'000.0;
+}
+
+// -----------------------------------------------------------------------------
+/// returns seconds since the program started running
+double get_time_delta() {
+  return timestamp_diff(start_time, now());
 }
 
 // -----------------------------------------------------------------------------
@@ -307,7 +316,7 @@ class UUID
  public:
     UUID() : value_{get_uuid()} { }
 
-    UUID(std::string_view uuid_string) : value_{uuid_string} { }
+    explicit UUID(std::string_view uuid_string) : value_{uuid_string} { }
 
     [[nodiscard]] std::string get_string() const { return value_; }
 
@@ -326,7 +335,7 @@ class UUID
   // https://en.wikipedia.org/wiki/Universally_unique_identifier
   // cat /proc/sys/kernel/random/uuid
   // sample: 8e08aa0f-8024-4e31-8400-e75cd1217239
-  std::string get_uuid()
+  static std::string get_uuid()
   {
       static constexpr auto UUID_LEN = 36;   // 5c47ba38-3e2b-48b1-988e-f16921213939
       static const char hex_char[] =
