@@ -19,10 +19,6 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#if __cplusplus < 202002L
-#error C++20 or newer support required to use this library.
-#endif
-
 #include "giopler/giopler.hpp"
 
 // -----------------------------------------------------------------------------

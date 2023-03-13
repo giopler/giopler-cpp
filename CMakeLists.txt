@@ -1,27 +1,17 @@
-# Copyright (c) 2022 Carlos Reyes
-# This code is licensed under the permissive MIT License (MIT).
-# SPDX-License-Identifier: MIT-Modern-Variant
+# Copyright (c) 2023 Giopler
+# Creative Commons Attribution No Derivatives 4.0 International license
+# https://creativecommons.org/licenses/by-nd/4.0
+# SPDX-License-Identifier: CC-BY-ND-4.0
 #
-# Permission is hereby granted, without written agreement and without
-# license or royalty fees, to use, copy, modify, and distribute this
-# software and its documentation for any purpose, provided that the
-# above copyright notice and the following two paragraphs appear in
-# all copies of this software.
-#
-# IN NO EVENT SHALL THE COPYRIGHT HOLDER BE LIABLE TO ANY PARTY FOR
-# DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES
-# ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS DOCUMENTATION, EVEN
-# IF THE COPYRIGHT HOLDER HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH
-# DAMAGE.
-#
-# THE COPYRIGHT HOLDER SPECIFICALLY DISCLAIMS ANY WARRANTIES, INCLUDING,
-# BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
-# FITNESS FOR A PARTICULAR PURPOSE.  THE SOFTWARE PROVIDED HEREUNDER IS
-# ON AN "AS IS" BASIS, AND THE COPYRIGHT HOLDER HAS NO OBLIGATION TO
-# PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
+# Share         — copy and redistribute the material in any medium or format for any purpose, even commercially.
+# NoDerivatives — If you remix, transform, or build upon the material, you may not distribute the modified material.
+# Attribution   — You must give appropriate credit, provide a link to the license, and indicate if changes were made.
+#     You may do so in any reasonable manner, but not in any way that suggests the licensor endorses you or your use.
 
-# versions supported by CLion 2022.1.3 are 2.8.11 to 3.22.x
-# CMake 3.12 introduced support for C++20
+# Our target system is the current long-term support version of Ubuntu (22.04).
+# Ubuntu 22.04LTS includes CMake 3.22, CLang 14.0, Gcc 11.2, and OpenSSL 3.0.
+
+# Versions of CMake supported by CLion 2022.1.3 are 2.8.11 to 3.22.x.
 cmake_minimum_required(VERSION 3.22)
 
 # set defaults for all targets
@@ -36,16 +26,17 @@ project(Giopler-Cpp
   LANGUAGES CXX)
 
 include(CTest)
-set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules;${CMAKE_MODULE_PATH}")
+
+# need our own FindBrotli.cmake file
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 # ------------------------------------------------------------------------------
 # https://cmake.org/cmake/help/latest/module/FindThreads.html
-set (THREADS_PREFER_PTHREAD_FLAG ON)
+set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 if(NOT Threads_FOUND)
 message(ERROR A threading library is required.)
 endif()
-list(APPEND GIOPLER_LIBRARIES Threads::Threads)
 
 # ------------------------------------------------------------------------------
 # https://cmake.org/cmake/help/latest/module/FindOpenSSL.html
@@ -53,61 +44,54 @@ find_package(OpenSSL REQUIRED COMPONENTS Crypto SSL)
 if(NOT OpenSSL_FOUND)
 message(ERROR OpenSSL library is required.)
 endif()
-include_directories(${OPENSSL_INCLUDE_DIR})
-list(APPEND GIOPLER_LIBRARIES ${OPENSSL_LIBRARIES})
 
 # ------------------------------------------------------------------------------
-# cmake_modules/FindBrotli.cmake
+# cmake/FindBrotli.cmake
 # https://github.com/google/brotli/
 find_package(Brotli REQUIRED)
 if(NOT BROTLI_FOUND)
 message(ERROR Brotli compression library is required.)
 endif()
-include_directories(${BROTLI_INCLUDE_DIRS})
-list(APPEND GIOPLER_LIBRARIES ${BROTLI_LIBRARIES})
-add_compile_definitions(PRIVATE GIOPLER_HAVE_BROTLI=1)
 
 # ------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+# Giopler is a header-only library
 # http://mariobadr.com/creating-a-header-only-library-with-cmake.html
 # https://dominikberner.ch/cmake-interface-lib/
 # https://www.cppengineer.com/blog/using-cmake-to-create-header-only-shared-and-static-libraries
 # Usage:   target_link_libraries(your_app_or_lib PRIVATE ${GIOPLER_LIBRARIES})
 add_library(giopler INTERFACE)
-target_include_directories(giopler INTERFACE "$<BUILD_INTERFACE:${Giopler_SOURCE_DIR}/include>")
-list(APPEND GIOPLER_LIBRARIES giopler)
+target_include_directories(giopler INTERFACE
+        ${OPENSSL_INCLUDE_DIR}
+        ${BROTLI_INCLUDE_DIRS}
+        $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
+        $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+)
+target_link_libraries(giopler INTERFACE
+        Threads::Threads
+        ${OPENSSL_LIBRARIES}
+        ${BROTLI_LIBRARIES}
+)
 
 # ------------------------------------------------------------------------------
-file(GLOB TEST_SOURCE_LIST CONFIGURE_DEPENDS "${Giopler_SOURCE_DIR}/test/*.cpp")
-add_executable(giopler_test "${TEST_SOURCE_LIST}")
-#target_include_directories(giopler_test PUBLIC $<BUILD_INTERFACE:${Giopler_SOURCE_DIR}/test>)
+add_executable(giopler_test "${CMAKE_CURRENT_SOURCE_DIR}/test/giopler_test.cpp")
 target_compile_options(giopler_test PRIVATE -Werror -Wall)
-target_link_libraries(giopler_test PRIVATE ${GIOPLER_LIBRARIES})
-target_link_libraries(giopler_test PRIVATE m)
+target_link_libraries(giopler_test PRIVATE giopler m)
 
 # ------------------------------------------------------------------------------
-file(GLOB SIMPLE_SOURCE_LIST CONFIGURE_DEPENDS "${Giopler_SOURCE_DIR}/sample/simple.cpp")
-add_executable(simple "${SIMPLE_SOURCE_LIST}")
-#target_include_directories(simple PUBLIC $<BUILD_INTERFACE:${Giopler_SOURCE_DIR}/sample>)
+add_executable(simple "${CMAKE_CURRENT_SOURCE_DIR}/sample/simple.cpp")
 target_compile_options(simple PRIVATE -Werror -Wall)
-target_link_libraries(simple PRIVATE ${GIOPLER_LIBRARIES})
-target_link_libraries(simple PRIVATE Threads::Threads)
-target_link_libraries(simple PRIVATE m)
+target_link_libraries(simple PRIVATE giopler m)
 
 # ------------------------------------------------------------------------------
-file(GLOB MAT_MULT_SOURCE_LIST CONFIGURE_DEPENDS "${Giopler_SOURCE_DIR}/sample/matrix_mult.cpp")
-add_executable(matrix_mult "${MAT_MULT_SOURCE_LIST}")
-#target_include_directories(matrix_mult PUBLIC $<BUILD_INTERFACE:${Giopler_SOURCE_DIR}/sample>)
+add_executable(matrix_mult "${CMAKE_CURRENT_SOURCE_DIR}/sample/matrix_mult.cpp")
 target_compile_options(matrix_mult PRIVATE -Werror -Wall)
-target_link_libraries(matrix_mult PRIVATE ${GIOPLER_LIBRARIES})
-target_link_libraries(matrix_mult PRIVATE m)
+target_link_libraries(matrix_mult PRIVATE giopler m)
 
 # ------------------------------------------------------------------------------
-file(GLOB THREADS_SOURCE_LIST CONFIGURE_DEPENDS "${Giopler_SOURCE_DIR}/sample/threads.cpp")
-add_executable(threads "${THREADS_SOURCE_LIST}")
-#target_include_directories(threads PUBLIC $<BUILD_INTERFACE:${Giopler_SOURCE_DIR}/sample>)
+add_executable(threads "${CMAKE_CURRENT_SOURCE_DIR}/sample/threads.cpp")
 target_compile_options(threads PRIVATE -Werror -Wall)
-target_link_libraries(threads PRIVATE ${GIOPLER_LIBRARIES})
-target_link_libraries(threads PRIVATE m)
+target_link_libraries(threads PRIVATE giopler m)
 
 # ------------------------------------------------------------------------------
 add_compile_definitions(PRIVATE GIOPLER_BUILD_MODE_DEV=1)

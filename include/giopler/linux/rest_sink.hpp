@@ -46,7 +46,6 @@ using namespace std::literals;
 // Summary: sending plain JSON data compressed with Brotli(10) works really well
 // Brotli works well for compressing JSON (textual) data and is supported by web browsers
 // default quality is 11
-#if defined(GIOPLER_HAVE_BROTLI)
 #include <brotli/encode.h>
 std::string compress_json(std::string_view json) {
   std::string output;
@@ -60,7 +59,6 @@ std::string compress_json(std::string_view json) {
   output.resize(output_size);
   return output;
 }
-#endif
 
 // -----------------------------------------------------------------------------
 namespace giopler::sink {
