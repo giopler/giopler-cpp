@@ -20,8 +20,8 @@
 // SOFTWARE.
 
 #pragma once
-#ifndef GIOPPLER_LOG_HPP
-#define GIOPPLER_LOG_HPP
+#ifndef GIOPLER_LOG_HPP
+#define GIOPLER_LOG_HPP
 
 #if __cplusplus < 202002L
 #error Support for C++20 or newer is required to use this library.

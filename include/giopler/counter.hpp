@@ -22,8 +22,8 @@
 //
 
 #pragma once
-#ifndef GIOPPLER_COUNTER_HPP
-#define GIOPPLER_COUNTER_HPP
+#ifndef GIOPLER_COUNTER_HPP
+#define GIOPLER_COUNTER_HPP
 
 #if __cplusplus < 202002L
 #error Support for C++20 or newer is required to use this library.
@@ -102,4 +102,4 @@ extern Record read_event_counters();
 #endif
 
 // -----------------------------------------------------------------------------
-#endif // defined GIOPPLER_COUNTER_HPP
+#endif // defined GIOPLER_COUNTER_HPP

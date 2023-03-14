@@ -1,6 +1,6 @@
 :doctype: article
 :description: A logging, profiling, and testing library for C and C++.
-:repository-url: https://github.com/gioppler/gioppler
+:repository-url: https://github.com/giopler/giopler-cpp
 :license-type: MIT License (MIT)
 :author: Carlos Reyes
 :source-highlighter: rouge
@@ -12,7 +12,7 @@
 :check: icon:check[set=fas,size=1x,role=green]
 :cross: icon:times[set=fas,size=1x,role=red]
 
-= gioppler
+= giopler
 
 A logging, profiling, and testing library for C and C++.
 
@@ -46,27 +46,27 @@ You can also reach me directly via mailto:creyes123@yahoo.com[Email].
 |===
 |Name|Abbrev|Description
 
-|GIOPPLER_BUILD_MODE_OFF
+|GIOPLER_BUILD_MODE_OFF
 |Off
 |turn off with near zero runtime cost
 
-|GIOPPLER_BUILD_MODE_DEV
+|GIOPLER_BUILD_MODE_DEV
 |Dev
 |development and debugging
 
-|GIOPPLER_BUILD_MODE_TEST
+|GIOPLER_BUILD_MODE_TEST
 |Test
 |run unit tests
 
-|GIOPPLER_BUILD_MODE_PROF
+|GIOPLER_BUILD_MODE_PROF
 |Prof
 |improve performance
 
-|GIOPPLER_BUILD_MODE_QA
+|GIOPLER_BUILD_MODE_QA
 |Qa
 |used by quality assurance team
 
-|GIOPPLER_BUILD_MODE_PROD
+|GIOPLER_BUILD_MODE_PROD
 |Prod
 |production deployments
 |===

@@ -42,6 +42,16 @@
 using namespace std::literals;
 
 // -----------------------------------------------------------------------------
+// https://stackoverflow.com/questions/22077802/simple-c-example-of-doing-an-http-post-and-consuming-the-response
+#include <stdio.h>      /* printf, sprintf */
+#include <stdlib.h>     /* exit */
+#include <unistd.h>     /* read, write, close */
+#include <string.h>     /* memcpy, memset */
+#include <sys/socket.h> /* socket, connect */
+#include <netinet/in.h> /* struct sockaddr_in, struct sockaddr */
+#include <netdb.h>      /* struct hostent, gethostbyname */
+
+// -----------------------------------------------------------------------------
 // https://www.lucidchart.com/techblog/2019/12/06/json-compression-alternative-binary-formats-and-compression-methods/
 // Summary: sending plain JSON data compressed with Brotli(10) works really well
 // Brotli works well for compressing JSON (textual) data and is supported by web browsers
@@ -64,6 +74,14 @@ std::string compress_json(std::string_view json) {
 namespace giopler::sink {
 
 // -----------------------------------------------------------------------------
+// https://quuxplusone.github.io/blog/2020/01/28/openssl-part-5/
+// https://wiki.openssl.org/index.php/SSL/TLS_Client
+// https://www.sslproxies.org/
+// https://www.ipify.org/
+// https://wiki.mozilla.org/Security/Server_Side_TLS
+// https://ssl-config.mozilla.org/
+
+// -----------------------------------------------------------------------------
 // OpenSSL 1.1.1 removed the need for external locking of its internal data structures
 // https://www.openssl.org/blog/blog/2017/02/21/threads/
 // https://github.com/openssl/openssl/issues/2165
@@ -80,13 +98,23 @@ class Rest : public Sink
   // example host: "www.domain.com"
   // port is either a string representation of the port number
   // or one of: http, telnet, socks, https, ssl, ftp, or gopher
-  Rest(std::string customer_token, std::string_view host, std::string_view port)
-  : _customer_token{std::move(customer_token)},
-    _host{host},
-    _port{port}
+  explicit Rest()
   {
-    _json_web_token = std::getenv("GIOPLER_TOKEN");
-    open_connection();
+    const char* proxy_host  = std::getenv("GIOPLER_PROXY_HOST");
+    _proxy_host             = proxy_host ? proxy_host : "";
+    _is_proxy               = (!_proxy_host.empty());
+    const char* proxy_port  = std::getenv("GIOPLER_PROXY_PORT");
+    _proxy_port             = proxy_port ? proxy_port : "443";
+
+    const char* server_host = std::getenv("GIOPLER_HOST");
+    _server_host            = server_host ? server_host : "www.giopler.com";
+    _is_localhost           = (_server_host == "localhost");
+    const char* server_port = std::getenv("GIOPLER_PORT");
+    _server_port            = server_port ? server_port : (_is_localhost ? "80" : "443");
+
+    _json_web_token         = std::getenv("GIOPLER_TOKEN");
+
+    if (!_is_localhost)   open_connection();
   }
 
   ~Rest() override {
@@ -94,10 +122,9 @@ class Rest : public Sink
   }
 
   /// add a new JSON format data record sink
-  static void add_sink(std::string_view customer_token)
+  static void add_sink()
   {
-    g_sink_manager.add_sink(
-        std::make_unique<Rest>(std::string(customer_token), SERVER_HOST, SERVER_PORT));
+    g_sink_manager.add_sink(std::make_unique<Rest>());
   }
 
  protected:
@@ -107,29 +134,35 @@ class Rest : public Sink
   // use a mutex to serialize the writes
   // this maximizes the chances that the HTTP connection will stay open
   bool write_record(std::shared_ptr<Record> record) override {
+    const std::string json_body{record_to_json(record)};   // don't need the lock for this
     const std::lock_guard<std::mutex> lock{_mutex};
-    const std::string path{std::string{SERVER_PATH} + "event"s};
-    post(path, record_to_json(record));
+
+    if (_is_localhost) {
+      http_post(_json_web_token, _server_host, _server_port, json_body);
+    } else {
+      post(json_body);
+    }
+
     return true;   // record was not filtered and it was written out
   }
 
   void flush() override { }
 
  private:
-  constexpr static inline std::string_view SERVER_HOST{"localhost"sv};
-  constexpr static inline std::string_view SERVER_PATH{"/api/v1/"sv};
-  constexpr static inline std::string_view SERVER_PORT{"8100"sv};
+  std::string _proxy_host;
+  std::string _proxy_port;
+  std::string _server_host;
+  std::string _server_port;
+  std::string _json_web_token;
+  bool _is_proxy;
+  bool _is_localhost;
+
   std::mutex _mutex;
   constexpr static std::size_t RESULT_BUFFER_SIZE = 2048;
   SSL_CTX* _ssl_ctx;
   const SSL_METHOD* _ssl_method;
   BIO* _bio;   // OpenSSL I/O stream abstraction (similar to FILE*)
   SSL* _ssl;
-  std::string _customer_token;
-  std::string _host;
-  std::string _path;
-  std::string _port;
-  std::string _json_web_token;
   int _response_status;
   const char* _result_contents;
   char result_buffer[RESULT_BUFFER_SIZE];
@@ -161,16 +194,16 @@ class Rest : public Sink
       const long bio_get_ssl_status = BIO_get_ssl(_bio, &_ssl);
       assert(bio_get_ssl_status);
 
-      const int tlsext_host_status = SSL_set_tlsext_host_name(_ssl, _host.c_str());
+      const int tlsext_host_status = SSL_set_tlsext_host_name(_ssl, _server_host.c_str());
       assert(tlsext_host_status);
 
       SSL_set_mode(_ssl, SSL_MODE_AUTO_RETRY);
 
-      const long set_conn_port_status = BIO_set_conn_port(_bio, _port.c_str());
-      assert(set_conn_port_status == 1);
-
-      const long set_conn_hostname_status = BIO_set_conn_hostname(_bio, _host.c_str());
+      const long set_conn_hostname_status = BIO_set_conn_hostname(_bio, _server_host.c_str());
       assert(set_conn_hostname_status == 1);
+
+      const long set_conn_port_status = BIO_set_conn_port(_bio, _server_port.c_str());
+      assert(set_conn_port_status == 1);
 
       const int bio_conn_status = BIO_do_connect(_bio);
       ERR_print_errors(_bio);
@@ -184,13 +217,13 @@ class Rest : public Sink
   // returns the JSON content if HTTP result status code >= 200 and < 300
   // https://wiki.openssl.org/index.php/Library_Initialization
   // https://wiki.openssl.org/index.php/SSL/TLS_Client
-  std::string_view post(std::string_view path, std::string_view json_content) {
+  std::string_view post(std::string_view json_content) {
     if (SSL_get_shutdown(_ssl) == SSL_RECEIVED_SHUTDOWN) {
         close_connection();
         open_connection();
     }
 
-    send_request("POST", std::string{path}, json_content);
+    send_request(json_content);
     read_response();
     parse_response_status();
     assert(_response_status == 200);
@@ -198,20 +231,23 @@ class Rest : public Sink
     return _result_contents;
   }
 
-  void send_request(std::string http_method, std::string path, std::string_view json_content) {
+  void send_request(std::string_view json_content) {
+      const std::string brotli_body = compress_json(json_content);
+
       const int bytes_written = BIO_printf(_bio,
-          "%s %s HTTP/1.1\r\n"
-          "Host: %s\r\n"
+          "POST /api/v1/event HTTP/1.1\r\n"
+          "Host: %s:%s\r\n"
           "Connection: keep-alive\r\n"
-          "User-Agent: Gioppler/1.0\r\n"
+          "User-Agent: Giopler/1.0\r\n"
           "Authorization: Bearer %s\r\n"
           "Accept: application/json\r\n"
+          "Content-Encoding: br\r\n"
           "Content-Type: application/json\r\n"
           "Content-Length: %lu\r\n\r\n",
-          http_method.c_str(), path.c_str(), _host.c_str(), _json_web_token.c_str(), json_content.size());
+          _server_host.c_str(), _server_port.c_str(), _json_web_token.c_str(), brotli_body.size());
       assert(bytes_written > 0);
 
-      const int write_status = BIO_write(_bio, json_content.data(), json_content.size());
+      const int write_status = BIO_write(_bio, brotli_body.data(), static_cast<int>(brotli_body.size()));
       assert(write_status > 0);
   }
 
@@ -252,6 +288,92 @@ class Rest : public Sink
   void close_connection() {
       BIO_free_all(_bio);
       SSL_CTX_free(_ssl_ctx);
+  }
+
+  void http_error(const char *msg) { perror(msg); exit(0); }
+
+  // ---------------------------------------------------------------------------
+  /// this is a stand-alone function to test sending events to an http connection (typically localhost)
+  // uses the Linux socket API
+  // closes the connection after each POST message
+  // does not bother to compress the data
+  void http_post(std::string token, std::string host, std::string port_str, std::string_view json_body)
+  {
+      int port = std::atoi(port_str.c_str());
+      struct hostent *server;
+      struct sockaddr_in serv_addr;
+      int sockfd, bytes, sent, received, total;
+      char message[1024], response[4096];
+
+      sprintf(message,
+        "POST /api/v1/event HTTP/1.0\r\n"
+        "Host: %s\r\n"
+        "Connection: close\r\n"
+        "User-Agent: Giopler/1.0\r\n"
+        "Authorization: Bearer %s\r\n"
+        "Accept: application/json\r\n"
+        "Content-Type: application/json\r\n"
+        "Content-Length: %lu\r\n\r\n",
+        host.c_str(), token.c_str(), json_body.length());
+
+      printf("Request:\n%s\n", message);
+
+      /* create the socket */
+      sockfd = socket(AF_INET, SOCK_STREAM, 0);
+      if (sockfd < 0)   http_error("ERROR opening socket");
+
+      /* lookup the ip address */
+      server = gethostbyname(host.c_str());
+      if (server == NULL)   http_error("ERROR, no such host");
+
+      /* fill in the structure */
+      memset(&serv_addr,0,sizeof(serv_addr));
+      serv_addr.sin_family = AF_INET;
+      serv_addr.sin_port   = htons(port);
+      memcpy(&serv_addr.sin_addr.s_addr,server->h_addr,server->h_length);
+
+      /* connect the socket */
+      if (connect(sockfd,(struct sockaddr *)&serv_addr,sizeof(serv_addr)) < 0)
+          http_error("ERROR connecting");
+
+      /* send the request */
+      total = strlen(message);
+      sent = 0;
+      do {
+          bytes = write(sockfd,message+sent,total-sent);
+          if (bytes < 0)
+              http_error("ERROR writing message to socket");
+          if (bytes == 0)
+              break;
+          sent += bytes;
+      } while (sent < total);
+
+      /* receive the response */
+      memset(response,0,sizeof(response));
+      total = sizeof(response)-1;
+      received = 0;
+      do {
+          bytes = read(sockfd,response+received,total-received);
+          if (bytes < 0)
+              http_error("ERROR reading response from socket");
+          if (bytes == 0)
+              break;
+          received += bytes;
+      } while (received < total);
+
+      /*
+       * if the number of received bytes is the total size of the
+       * array then we have run out of space to store the response
+       * and it hasn't all arrived yet - so that's a bad thing
+       */
+      if (received == total)
+          http_error("ERROR storing complete response from socket");
+
+      /* close the socket */
+      close(sockfd);
+
+      /* process response */
+      printf("Response:\n%s\n",response);
   }
 };
 

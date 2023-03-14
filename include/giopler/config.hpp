@@ -22,8 +22,8 @@
 //
 
 #pragma once
-#ifndef GIOPPLER_CONFIG_HPP
-#define GIOPPLER_CONFIG_HPP
+#ifndef GIOPLER_CONFIG_HPP
+#define GIOPLER_CONFIG_HPP
 
 #if __cplusplus < 202002L
 #error Support for C++20 or newer is required to use this library.

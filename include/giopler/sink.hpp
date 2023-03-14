@@ -196,7 +196,7 @@ namespace giopler::sink {
 // Defined here, so we can refer to the sink classes.
 void SinkManager::create_sinks() {
   if (std::getenv("GIOPLER_TOKEN")) {
-    Rest::add_sink(std::getenv("GIOPLER_TOKEN"));
+    Rest::add_sink();
   } else {
     Json::add_sink();   // adds all record keys in sorted order
   }

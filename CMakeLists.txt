@@ -22,7 +22,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)         # turn off GNU compiler extensions
 project(Giopler-Cpp
   VERSION 0.2.0
   DESCRIPTION "A profiling, logging, and testing library for C++20"
-  HOMEPAGE_URL "https://github.com/gioppler/gioppler"
+  HOMEPAGE_URL "https://github.com/giopler/giopler-cpp"
   LANGUAGES CXX)
 
 include(CTest)
@@ -98,5 +98,5 @@ add_compile_definitions(PRIVATE GIOPLER_BUILD_MODE_DEV=1)
 
 # ------------------------------------------------------------------------------
 if(BUILD_TESTING)
-  add_test(NAME ackermann_ackermann4_1 COMMAND gioppler_test ackermann ackermann4_1)
+  add_test(NAME ackermann_ackermann4_1 COMMAND giopler_test ackermann ackermann4_1)
 endif()

@@ -54,12 +54,12 @@ using namespace std::literals;
 #if defined(__cpp_lib_format)
 // https://en.cppreference.com/w/cpp/utility/format
 #include <format>
-namespace gioppler {
+namespace giopler {
 template <typename... T>
 [[nodiscard]] std::string format(std::string_view fmt, T&&... args) {
   return std::vformat(fmt, std::make_format_args(args...));
 }
-}   // namespace gioppler
+}   // namespace giopler
 #else
 // https://github.com/fmtlib/fmt
 #define FMT_HEADER_ONLY 1
@@ -168,20 +168,20 @@ std::unique_ptr<std::ostream>
 get_output_filepath(const std::string_view directory = "<temp>"sv, const std::string_view extension = "txt"sv)
 {
   if (directory == "<cerr>") {
-    std::clog << "INFO: gioppler: adding log destination: cerr" << std::endl;
+    std::clog << "INFO: giopler: adding log destination: cerr" << std::endl;
     return std::make_unique<std::ostream>(std::cerr.rdbuf());
   } else if (directory == "<cout>") {
-    std::clog << "INFO: gioppler: adding log destination: cout" << std::endl;
+    std::clog << "INFO: giopler: adding log destination: cout" << std::endl;
     return std::make_unique<std::ostream>(std::cout.rdbuf());
   } else if (directory == "<clog>") {
-    std::clog << "INFO: gioppler: adding log destination: clog" << std::endl;
+    std::clog << "INFO: giopler: adding log destination: clog" << std::endl;
     return std::make_unique<std::ostream>(std::clog.rdbuf());
   }
 
   const std::filesystem::path directory_path = resolve_directory(directory);
   const std::filesystem::path filename_path  = create_filename(extension);
   const std::filesystem::path full_path      = directory_path/filename_path;
-  std::clog << "INFO: gioppler: adding log destination: " << full_path << std::endl;
+  std::clog << "INFO: giopler: adding log destination: " << full_path << std::endl;
   return std::make_unique<std::ofstream>(full_path, std::ios::trunc);
 }
 

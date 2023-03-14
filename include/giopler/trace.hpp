@@ -110,7 +110,7 @@ void set_breakpoint()
 #pragma GCC diagnostic pop
 
 // -----------------------------------------------------------------------------
-}   // namespace gioppler::dev
+}   // namespace giopler::dev
 
 // -----------------------------------------------------------------------------
 namespace giopler::prod
