@@ -33,8 +33,8 @@
 // https://en.wikipedia.org/wiki/Matrix_multiplication
 
 // L1d cache:                       192 KiB (6 instances)
-// L2 cache:                        3 MiB (6 instances)
-// L3 cache:                        32 MiB (1 instance)
+// L2 cache:                          3 MiB (6 instances)
+// L3 cache:                         32 MiB (1 instance)
 
 // matrix dimension size for fitting into L1 cache - doubles
 #define L1_DIM_DOUBLE     32

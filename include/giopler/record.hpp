@@ -421,6 +421,11 @@ std::string record_value_to_string(const RecordValue& value) {
     case RecordValue::Type::Empty: {
       return "\"null\"";
     }
+
+    default: {
+      assert(false);
+      return ""s;
+    }
   }
 }
 

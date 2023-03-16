@@ -63,8 +63,7 @@ class Trace final
   // [0]=thread, [_stack_depth-1]=current function
   // [<thread start event id>, <function start event id>, ...]
   std::shared_ptr<giopler::Array> get_object_ids() {
-    std::shared_ptr<giopler::Array> stack;
-    stack->reserve(_stack_depth);
+    std::shared_ptr<giopler::Array> stack{std::make_shared<giopler::Array>(_stack_depth)};
     std::size_t current_stack_frame = _stack_depth-1;
     Trace* trace_object             = this;
 
@@ -80,8 +79,7 @@ class Trace final
   // [0]=thread, [_stack_depth-1]=current function
   // [<thread start event id>, <function start event id>, ...]
   std::shared_ptr<giopler::Array> get_function_names() {
-    std::shared_ptr<giopler::Array> stack;
-    stack->reserve(_stack_depth);
+    std::shared_ptr<giopler::Array> stack{std::make_shared<giopler::Array>(_stack_depth)};
     std::size_t current_stack_frame = _stack_depth-1;
     Trace* trace_object             = this;
 
@@ -94,7 +92,7 @@ class Trace final
   }
 
   /// true=this function did not have any children function calls
-  bool is_leaf() const {
+  [[nodiscard]] bool is_leaf() const {
     return _is_leaf;
   }
 
@@ -102,8 +100,8 @@ class Trace final
   static inline thread_local Trace* _trace_object       = nullptr;
   static inline thread_local std::uint32_t _stack_depth = 0;
   Trace* _parent_trace_object;
-  UUID _object_id;
-  const char* _function_name;
+  UUID _object_id;              // object id for this stack frame
+  const char* _function_name;   // function name for this stack frame
   bool _is_leaf = true;   // assume true until we know otherwise
 };
 
@@ -272,6 +270,7 @@ class Thread final
 /// keep track of the lifetime of each thread for tracing and profiling purposes
 // depends on the counters declared static inline in linux/counters.hpp
 // Note: static initialization order fiasco does not apply when the variables are also inline
+// Static variables in one translation unit are initialized according to their definition order.
 static inline thread_local Thread g_thread;
 
 // -----------------------------------------------------------------------------

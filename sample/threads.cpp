@@ -1,39 +1,28 @@
-#include <atomic>
-#include <deque>
-#include <functional>
-#include <iostream>
-#include <memory>
-#include <mutex>
-#include <shared_mutex>
-#include <source_location>
-#include <sstream>
-#include <stack>
-#include <string>
-#include <thread>
-#include <unordered_map>
-#include <utility>
 
+#include "giopler/giopler.hpp"
 #include <cstdlib>
-#include <cstring>
-#include <cerrno>
+#include <thread>
 
-
-int test(const int instance)
+// -----------------------------------------------------------------------------
+void test(const int instance)
 {
-  std::cerr << "inside test " << instance << std::endl;
+  giopler::dev::Function function(instance);
+  std::this_thread::sleep_for(std::chrono::milliseconds(10));
   if (instance > 1) {
     test(instance-1);
   }
-  return 0;
 }
 
-int
-main() {
-  //const int t1_result = test();
-  std::thread t2 = std::thread(test, 1);
-  std::thread t3 = std::thread(test, 2);
-  std::thread t4 = std::thread(test, 3);
+// -----------------------------------------------------------------------------
+int main()
+{
+  test(1);
+  std::thread t2 = std::thread(test,  1);
+  std::thread t3 = std::thread(test,  3);
+  std::thread t4 = std::thread(test, 10);
   t2.join();
   t3.join();
   t4.join();
+
+  return EXIT_SUCCESS;
 }

@@ -68,6 +68,7 @@ constexpr std::string_view get_build_mode_name() {
     case BuildMode::Off:    return "Off"sv;
     case BuildMode::Dev:    return "Dev"sv;
     case BuildMode::Test:   return "Test"sv;
+    case BuildMode::Bench:  return "Bench"sv;
     case BuildMode::Prof:   return "Prof"sv;
     case BuildMode::Qa:     return "Qa"sv;
     case BuildMode::Prod:   return "Prod"sv;

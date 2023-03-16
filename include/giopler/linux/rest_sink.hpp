@@ -41,6 +41,8 @@
 #include <openssl/ssl.h>
 using namespace std::literals;
 
+#include <brotli/encode.h>
+
 // -----------------------------------------------------------------------------
 // https://stackoverflow.com/questions/22077802/simple-c-example-of-doing-an-http-post-and-consuming-the-response
 #include <stdio.h>      /* printf, sprintf */
@@ -50,25 +52,6 @@ using namespace std::literals;
 #include <sys/socket.h> /* socket, connect */
 #include <netinet/in.h> /* struct sockaddr_in, struct sockaddr */
 #include <netdb.h>      /* struct hostent, gethostbyname */
-
-// -----------------------------------------------------------------------------
-// https://www.lucidchart.com/techblog/2019/12/06/json-compression-alternative-binary-formats-and-compression-methods/
-// Summary: sending plain JSON data compressed with Brotli(10) works really well
-// Brotli works well for compressing JSON (textual) data and is supported by web browsers
-// default quality is 11
-#include <brotli/encode.h>
-std::string compress_json(std::string_view json) {
-  std::string output;
-  std::size_t output_size = BrotliEncoderMaxCompressedSize(json.size());
-  assert(output_size);
-  output.reserve(output_size);
-  const BROTLI_BOOL status = BrotliEncoderCompress(BROTLI_DEFAULT_QUALITY, BROTLI_DEFAULT_WINDOW, BROTLI_MODE_TEXT,
-                                                   json.size(), reinterpret_cast<const uint8_t *>(json.data()),
-                                                   &output_size, reinterpret_cast<uint8_t *>(output.data()));
-  assert(status == BROTLI_TRUE);
-  output.resize(output_size);
-  return output;
-}
 
 // -----------------------------------------------------------------------------
 namespace giopler::sink {
@@ -290,14 +273,33 @@ class Rest : public Sink
       SSL_CTX_free(_ssl_ctx);
   }
 
-  void http_error(const char *msg) { perror(msg); exit(0); }
+  // -----------------------------------------------------------------------------
+  // https://www.lucidchart.com/techblog/2019/12/06/json-compression-alternative-binary-formats-and-compression-methods/
+  // Summary: sending plain JSON data compressed with Brotli(10) works really well
+  // Brotli works well for compressing JSON (textual) data and is supported by web browsers
+  // default quality is 11
+  static std::string compress_json(std::string_view json) {
+    std::string output;
+    std::size_t output_size = BrotliEncoderMaxCompressedSize(json.size());
+    assert(output_size);
+    output.reserve(output_size);
+    const BROTLI_BOOL status = BrotliEncoderCompress(BROTLI_DEFAULT_QUALITY, BROTLI_DEFAULT_WINDOW, BROTLI_MODE_TEXT,
+                                                     json.size(), reinterpret_cast<const uint8_t *>(json.data()),
+                                                     &output_size, reinterpret_cast<uint8_t *>(output.data()));
+    assert(status == BROTLI_TRUE);
+    output.resize(output_size);
+    return output;
+  }
+
+  // -----------------------------------------------------------------------------
+  static void http_error(const char *msg) { perror(msg); exit(0); }
 
   // ---------------------------------------------------------------------------
   /// this is a stand-alone function to test sending events to an http connection (typically localhost)
   // uses the Linux socket API
   // closes the connection after each POST message
   // does not bother to compress the data
-  void http_post(std::string token, std::string host, std::string port_str, std::string_view json_body)
+  static void http_post(std::string token, std::string host, std::string port_str, std::string_view json_body)
   {
       int port = std::atoi(port_str.c_str());
       struct hostent *server;

@@ -20,6 +20,7 @@
 // SOFTWARE.
 
 #include "giopler/giopler.hpp"
+#include <cstdlib>
 
 // -----------------------------------------------------------------------------
 uint64_t factorial(uint64_t n) {
@@ -30,10 +31,11 @@ uint64_t factorial(uint64_t n) {
 // -----------------------------------------------------------------------------
 int main()
 {
-  giopler::dev::confirm(factorial(0) == 1);
-  giopler::dev::confirm(factorial(1) == 1);
-  giopler::dev::confirm(factorial(5) == 120);
+  giopler::dev::confirm(factorial( 0) == 1);
+  giopler::dev::confirm(factorial( 1) == 1);
+  giopler::dev::confirm(factorial( 3) == 6);
+  giopler::dev::confirm(factorial( 5) == 120);
   giopler::dev::confirm(factorial(10) == 3628800);
 
-  giopler::dev::confirm(factorial(3) == 6);
+  return EXIT_SUCCESS;
 }

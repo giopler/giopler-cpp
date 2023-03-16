@@ -74,19 +74,24 @@ target_link_libraries(giopler INTERFACE
 )
 
 # ------------------------------------------------------------------------------
-add_executable(giopler_test "${CMAKE_CURRENT_SOURCE_DIR}/test/giopler_test.cpp")
-target_compile_options(giopler_test PRIVATE -Werror -Wall)
-target_link_libraries(giopler_test PRIVATE giopler m)
+add_executable(factorial "${CMAKE_CURRENT_SOURCE_DIR}/sample/factorial.cpp")
+target_compile_options(factorial PRIVATE -Werror -Wall)
+target_link_libraries(factorial PRIVATE giopler m)
 
 # ------------------------------------------------------------------------------
-add_executable(simple "${CMAKE_CURRENT_SOURCE_DIR}/sample/simple.cpp")
-target_compile_options(simple PRIVATE -Werror -Wall)
-target_link_libraries(simple PRIVATE giopler m)
+add_executable(ackermann "${CMAKE_CURRENT_SOURCE_DIR}/sample/ackermann.cpp")
+target_compile_options(ackermann PRIVATE -Werror -Wall)
+target_link_libraries(ackermann PRIVATE giopler m)
 
 # ------------------------------------------------------------------------------
-add_executable(matrix_mult "${CMAKE_CURRENT_SOURCE_DIR}/sample/matrix_mult.cpp")
-target_compile_options(matrix_mult PRIVATE -Werror -Wall)
-target_link_libraries(matrix_mult PRIVATE giopler m)
+add_executable(fibonacci "${CMAKE_CURRENT_SOURCE_DIR}/sample/fibonacci.cpp")
+target_compile_options(fibonacci PRIVATE -Werror -Wall)
+target_link_libraries(fibonacci PRIVATE giopler m)
+
+# ------------------------------------------------------------------------------
+add_executable(matrices "${CMAKE_CURRENT_SOURCE_DIR}/sample/matrices.cpp")
+target_compile_options(matrices PRIVATE -Werror -Wall)
+target_link_libraries(matrices PRIVATE giopler m)
 
 # ------------------------------------------------------------------------------
 add_executable(threads "${CMAKE_CURRENT_SOURCE_DIR}/sample/threads.cpp")

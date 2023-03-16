@@ -35,7 +35,6 @@
 #include <unistd.h>      // getpid()
 
 #include <algorithm>
-#include <cassert>
 #include <chrono>
 #include <cstdint>
 #include <iomanip>
