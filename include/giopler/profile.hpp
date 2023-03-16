@@ -271,7 +271,7 @@ class Thread final
 // depends on the counters declared static inline in linux/counters.hpp
 // Note: static initialization order fiasco does not apply when the variables are also inline
 // Static variables in one translation unit are initialized according to their definition order.
-static inline thread_local Thread g_thread;
+static inline thread_local Thread g_thread{};
 
 // -----------------------------------------------------------------------------
 /// trace or profile a function

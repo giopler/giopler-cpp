@@ -145,12 +145,16 @@ static inline SinkManager g_sink_manager{};
 /// log file destination using JSON format
 // https://jsonlines.org/
 // https://www.json.org/
+// Note: wrapping the output stream in a osyncstream does not work.
+// There is a SIGSEGV on program exit. My hunch is that the osyncstream is
+// trying to take ownership of the output stream.
+// A possible solution might be to use std::ref.
 class Json : public Sink {
  public:
   Json(std::string_view filepath)
   :
-    _output_stream{get_output_filepath(filepath, "json"sv)},
-    _osync_stream{std::osyncstream(*_output_stream)}
+    _output_stream{get_output_filepath(filepath, "json"sv)}
+    //_osync_stream{std::osyncstream(*_output_stream)}
   { }
 
   ~Json() override = default;
@@ -165,18 +169,18 @@ class Json : public Sink {
 
  protected:
   bool write_record(std::shared_ptr<Record> record) override {
-    _osync_stream << record_to_json(record);
+    *_output_stream << record_to_json(record);
     return true;   // record was not filtered and it was written out
   }
 
   void flush() override {
-    _osync_stream.emit();
+    //_osync_stream.emit();
     _output_stream->flush();
   }
 
  private:
   std::unique_ptr<std::ostream> _output_stream;
-  std::osyncstream _osync_stream;
+  //std::osyncstream _osync_stream;
   std::vector<std::string> _fields;
 };
 
