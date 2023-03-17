@@ -254,8 +254,8 @@ class Thread final
       }
     }
 
-    // thread_local variables are at risk of getting optimized away
-    static Thread* get_thread() { return &(*g_thread); }
+    // force the compiler to retain the g_thread object
+    static const Thread* get_thread() { return g_thread.get(); }
 
  private:
     // -----------------------------------------------------------------------------
@@ -326,7 +326,7 @@ class Function final
     }
 
  private:
-  static inline Thread* _thread = Thread::get_thread();   // ensure the Thread code is not optimized away
+  static inline volatile const Thread* _thread{Thread::get_thread()};   // force compiler to retain code for g_thread
 
   struct FunctionData {
       std::unique_ptr<giopler::source_location> _source_location;
