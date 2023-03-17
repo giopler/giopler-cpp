@@ -254,24 +254,27 @@ class Thread final
       }
     }
 
+    // thread_local variables are at risk of getting optimized away
+    static Thread* get_thread() { return &(*g_thread); }
+
  private:
-  struct ThreadData {
-      std::unique_ptr<giopler::source_location> _source_location;
-      UUID _begin_id;
-      std::unique_ptr<Trace> _trace;
-      std::unique_ptr<Profile> _profile;
-  };
+    // -----------------------------------------------------------------------------
+    /// keep track of the lifetime of each thread for tracing and profiling purposes
+    // depends on the counters declared static inline in linux/counters.hpp
+    // Note: static initialization order fiasco does not apply when the variables are also inline
+    // Static variables in one translation unit are initialized according to their definition order.
+    static inline thread_local std::unique_ptr<Thread> g_thread{std::make_unique<Thread>()};
 
-  // use a data object to help minimize impact when not enabled
-  std::unique_ptr<ThreadData> _data;
+    struct ThreadData {
+        std::unique_ptr<giopler::source_location> _source_location;
+        UUID _begin_id;
+        std::unique_ptr<Trace> _trace;
+        std::unique_ptr<Profile> _profile;
+    };
+
+    // use a data object to help minimize impact when not enabled
+    std::unique_ptr<ThreadData> _data;
 };
-
-// -----------------------------------------------------------------------------
-/// keep track of the lifetime of each thread for tracing and profiling purposes
-// depends on the counters declared static inline in linux/counters.hpp
-// Note: static initialization order fiasco does not apply when the variables are also inline
-// Static variables in one translation unit are initialized according to their definition order.
-static inline thread_local Thread g_thread{};
 
 // -----------------------------------------------------------------------------
 /// trace or profile a function
@@ -323,6 +326,8 @@ class Function final
     }
 
  private:
+  static inline Thread* _thread = Thread::get_thread();   // ensure the Thread code is not optimized away
+
   struct FunctionData {
       std::unique_ptr<giopler::source_location> _source_location;
       UUID _begin_id;
