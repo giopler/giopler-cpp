@@ -97,6 +97,8 @@ class Rest : public Sink
 
     _json_web_token         = std::getenv("GIOPLER_TOKEN");
 
+    printf("Host: %s:%s\nToken: %s\n\n", _server_host.c_str(), _server_port.c_str(), _json_web_token.c_str());
+
     if (!_is_localhost)   open_connection();
   }
 
@@ -218,7 +220,7 @@ class Rest : public Sink
       const std::string brotli_body = compress_json(json_content);
 
       const int bytes_written = BIO_printf(_bio,
-          "POST /api/v1/event HTTP/1.1\r\n"
+          "POST /api/v1/post_event HTTP/1.1\r\n"
           "Host: %s:%s\r\n"
           "Connection: keep-alive\r\n"
           "User-Agent: Giopler/1.0\r\n"
@@ -299,26 +301,27 @@ class Rest : public Sink
   // uses the Linux socket API
   // closes the connection after each POST message
   // does not bother to compress the data
+  // https://stackoverflow.com/questions/22077802/simple-c-example-of-doing-an-http-post-and-consuming-the-response
   static void http_post(std::string token, std::string host, std::string port_str, std::string_view json_body)
   {
-      int port = std::atoi(port_str.c_str());
+      uint16_t port = std::atoi(port_str.c_str());
       struct hostent *server;
       struct sockaddr_in serv_addr;
       int sockfd, bytes, sent, received, total;
-      char message[1024], response[4096];
+      char message[4096], response[4096];
 
       sprintf(message,
-        "POST /api/v1/event HTTP/1.0\r\n"
-        "Host: %s\r\n"
+        "POST /api/v1/post_event HTTP/1.1\r\n"
+        "Host: %s:%hd\r\n"
         "Connection: close\r\n"
         "User-Agent: Giopler/1.0\r\n"
         "Authorization: Bearer %s\r\n"
         "Accept: application/json\r\n"
         "Content-Type: application/json\r\n"
         "Content-Length: %lu\r\n\r\n",
-        host.c_str(), token.c_str(), json_body.length());
+        host.c_str(), port, token.c_str(), json_body.length());
 
-      printf("Request:\n%s\n", message);
+      printf("HTTP Request:\n%s\n", message);
 
       /* create the socket */
       sockfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -326,7 +329,7 @@ class Rest : public Sink
 
       /* lookup the ip address */
       server = gethostbyname(host.c_str());
-      if (server == NULL)   http_error("ERROR, no such host");
+      if (server == nullptr)   http_error("ERROR no such host");
 
       /* fill in the structure */
       memset(&serv_addr,0,sizeof(serv_addr));
@@ -339,10 +342,10 @@ class Rest : public Sink
           http_error("ERROR connecting");
 
       /* send the request */
-      total = strlen(message);
+      total = (int)strlen(message);
       sent = 0;
       do {
-          bytes = write(sockfd,message+sent,total-sent);
+          bytes = (int)write(sockfd,message+sent,total-sent);
           if (bytes < 0)
               http_error("ERROR writing message to socket");
           if (bytes == 0)
@@ -355,7 +358,7 @@ class Rest : public Sink
       total = sizeof(response)-1;
       received = 0;
       do {
-          bytes = read(sockfd,response+received,total-received);
+          bytes = (int)read(sockfd,response+received,total-received);
           if (bytes < 0)
               http_error("ERROR reading response from socket");
           if (bytes == 0)
@@ -375,7 +378,7 @@ class Rest : public Sink
       close(sockfd);
 
       /* process response */
-      printf("Response:\n%s\n",response);
+      printf("HTTP Response:\n%s\n",response);
   }
 };
 
