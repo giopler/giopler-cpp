@@ -144,10 +144,10 @@ class Rest : public Sink
 
   std::mutex _mutex;
   constexpr static std::size_t RESULT_BUFFER_SIZE = 2048;
-  SSL_CTX* _ssl_ctx;
+  SSL_CTX* _ssl_ctx = nullptr;
   const SSL_METHOD* _ssl_method;
-  BIO* _bio;   // OpenSSL I/O stream abstraction (similar to FILE*)
-  SSL* _ssl;
+  BIO* _bio = nullptr;   // OpenSSL I/O stream abstraction (similar to FILE*)
+  SSL* _ssl = nullptr;
   int _response_status;
   const char* _result_contents;
   char result_buffer[RESULT_BUFFER_SIZE];
@@ -271,8 +271,15 @@ class Rest : public Sink
 
   /// close and clean-up data for a previously open connection
   void close_connection() {
+    if (_bio) {
       BIO_free_all(_bio);
+      _bio = nullptr;
+    }
+
+    if (_ssl_ctx) {
       SSL_CTX_free(_ssl_ctx);
+      _ssl_ctx = nullptr;
+    }
   }
 
   // -----------------------------------------------------------------------------
@@ -308,9 +315,9 @@ class Rest : public Sink
       struct hostent *server;
       struct sockaddr_in serv_addr;
       int sockfd, bytes, sent, received, total;
-      char message[4096], response[4096];
+      char headers[4096], response[4096];
 
-      sprintf(message,
+      sprintf(headers,
         "POST /api/v1/post_event HTTP/1.1\r\n"
         "Host: %s:%hd\r\n"
         "Connection: close\r\n"
@@ -321,40 +328,53 @@ class Rest : public Sink
         "Content-Length: %lu\r\n\r\n",
         host.c_str(), port, token.c_str(), json_body.length());
 
-      printf("HTTP Request:\n%s\n", message);
+      printf("HTTP Request Headers:\n%s\n", headers);
+      printf("HTTP Request Body:\n%s\n", json_body.data());
 
-      /* create the socket */
+      // create the socket
       sockfd = socket(AF_INET, SOCK_STREAM, 0);
       if (sockfd < 0)   http_error("ERROR opening socket");
 
-      /* lookup the ip address */
+      // lookup the ip address
       server = gethostbyname(host.c_str());
       if (server == nullptr)   http_error("ERROR no such host");
 
-      /* fill in the structure */
+      // fill in the structure
       memset(&serv_addr,0,sizeof(serv_addr));
       serv_addr.sin_family = AF_INET;
       serv_addr.sin_port   = htons(port);
       memcpy(&serv_addr.sin_addr.s_addr,server->h_addr,server->h_length);
 
-      /* connect the socket */
+      // connect the socket
       if (connect(sockfd,(struct sockaddr *)&serv_addr,sizeof(serv_addr)) < 0)
           http_error("ERROR connecting");
 
-      /* send the request */
-      total = (int)strlen(message);
+      // send the headers
+      total = (int)strlen(headers);
       sent = 0;
       do {
-          bytes = (int)write(sockfd,message+sent,total-sent);
+          bytes = (int)write(sockfd,headers+sent,total-sent);
           if (bytes < 0)
-              http_error("ERROR writing message to socket");
+              http_error("ERROR writing headers to socket");
           if (bytes == 0)
               break;
           sent += bytes;
       } while (sent < total);
 
-      /* receive the response */
-      memset(response,0,sizeof(response));
+      // send the body
+      total = (int)json_body.length();
+      sent = 0;
+      do {
+          bytes = (int)write(sockfd,json_body.data()+sent,total-sent);
+          if (bytes < 0)
+              http_error("ERROR writing body to socket");
+          if (bytes == 0)
+              break;
+          sent += bytes;
+      } while (sent < total);
+
+      // receive the response
+      //memset(response,0,sizeof(response));   // no need to clear the input buffer
       total = sizeof(response)-1;
       received = 0;
       do {
@@ -366,18 +386,16 @@ class Rest : public Sink
           received += bytes;
       } while (received < total);
 
-      /*
-       * if the number of received bytes is the total size of the
-       * array then we have run out of space to store the response
-       * and it hasn't all arrived yet - so that's a bad thing
-       */
+       // If the number of received bytes is the total size of the
+       // array, then we have run out of space to store the response.
+       // This means it hasn't all arrived yet - so that's a bad thing.
       if (received == total)
           http_error("ERROR storing complete response from socket");
 
-      /* close the socket */
+      // close the socket
       close(sockfd);
 
-      /* process response */
+      // process response
       printf("HTTP Response:\n%s\n",response);
   }
 };

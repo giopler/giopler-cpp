@@ -57,12 +57,12 @@ enum class EventCategory {Contract, Trace, Log, Profile, Test, Bench};
 /// convert the event category enum value into a string
 constexpr std::string_view get_event_category_name(const EventCategory event_category) {
   switch (event_category) {
-    case EventCategory::Contract:   return "contract"sv;
-    case EventCategory::Trace:      return "trace"sv;
-    case EventCategory::Log:        return "log"sv;
-    case EventCategory::Profile:    return "profile"sv;
-    case EventCategory::Test:       return "test"sv;
-    case EventCategory::Bench:      return "bench"sv;
+    case EventCategory::Contract:   return "Contract"sv;
+    case EventCategory::Trace:      return "Trace"sv;
+    case EventCategory::Log:        return "Log"sv;
+    case EventCategory::Profile:    return "Profile"sv;
+    case EventCategory::Test:       return "Test"sv;
+    case EventCategory::Bench:      return "Bench"sv;
   }
   return "UnknownEventCategory"sv;
 }
@@ -103,29 +103,29 @@ enum class Event {
 /// convert the event category enum value into a string
 constexpr std::string_view get_event_name(const Event event) {
   switch (event) {
-    case Event::Argument:       return "argument"sv;
-    case Event::Expect:         return "expect"sv;
-    case Event::Confirm:        return "confirm"sv;
-    case Event::InvariantBegin: return "invariant_begin"sv;
-    case Event::InvariantEnd:   return "invariant_end"sv;
-    case Event::Ensure:         return "ensure"sv;
-    case Event::Certify:        return "certify"sv;
+    case Event::Argument:       return "Argument"sv;
+    case Event::Expect:         return "Expect"sv;
+    case Event::Confirm:        return "Confirm"sv;
+    case Event::InvariantBegin: return "InvariantBegin"sv;
+    case Event::InvariantEnd:   return "InvariantEnd"sv;
+    case Event::Ensure:         return "Ensure"sv;
+    case Event::Certify:        return "Certify"sv;
 
-    case Event::Line:           return "line"sv;
-    case Event::Branch:         return "branch"sv;
+    case Event::Line:           return "Line"sv;
+    case Event::Branch:         return "Branch"sv;
 
-    case Event::Warning:        return "warning"sv;
-    case Event::Error:          return "error"sv;
-    case Event::Message:        return "message"sv;
+    case Event::Warning:        return "Warning"sv;
+    case Event::Error:          return "Error"sv;
+    case Event::Message:        return "Message"sv;
 
-    case Event::ProgramBegin:   return "program_begin"sv;
-    case Event::ProgramEnd:     return "program_end"sv;
-    case Event::ThreadBegin:    return "thread_begin"sv;
-    case Event::ThreadEnd:      return "thread_end"sv;
-    case Event::FunctionBegin:  return "function_begin"sv;
-    case Event::FunctionEnd:    return "function_end"sv;
-    case Event::ObjectBegin:    return "object_begin"sv;
-    case Event::ObjectEnd:      return "object_end"sv;
+    case Event::ProgramBegin:   return "ProgramBegin"sv;
+    case Event::ProgramEnd:     return "ProgramEnd"sv;
+    case Event::ThreadBegin:    return "ThreadBegin"sv;
+    case Event::ThreadEnd:      return "ThreadEnd"sv;
+    case Event::FunctionBegin:  return "FunctionBegin"sv;
+    case Event::FunctionEnd:    return "FunctionEnd"sv;
+    case Event::ObjectBegin:    return "ObjectBegin"sv;
+    case Event::ObjectEnd:      return "ObjectEnd"sv;
   }
   return "UnknownEvent"sv;
 }
@@ -565,20 +565,22 @@ namespace giopler {
 // these values are constant per program run
 std::shared_ptr<Record> get_program_record() {
   return std::make_shared<Record>(Record{
-      {"prog.start_ts"s,            start_time},
-      {"prog.memory_page_size"s,    get_memory_page_size()},
-      {"prog.physical_memory"s,     get_physical_memory()},
-      {"prog.total_cpu_cores"s,     get_total_cpu_cores()},
-      {"prog.available_cpu_cores"s, get_available_cpu_cores()},
-      {"prog.program_name"s,        get_program_name()},
-      {"prog.process_id"s,          get_process_id()},
-      {"prog.build_mode"s,          get_build_mode_name()},
-      {"prog.compiler"s,            get_compiler_name()},
-      {"prog.platform"s,            get_platform_name()},
-      {"prog.architecture"s,        get_architecture()},
-      {"prog.host_name"s,           get_host_name()},
-      {"prog.real_username"s,       get_real_username()},
-      {"prog.effective_username"s,  get_effective_username()}
+      {"start"s,            start_time},
+      {"pgm"s,              get_program_name()},
+      {"build"s,            get_build_mode_name()},
+
+      {"compiler"s,         get_compiler_name()},
+      {"platform"s,         get_platform_name()},
+      {"arch"s,             get_architecture()},
+      {"host"s,             get_host_name()},
+      {"real_user"s,        get_real_username()},
+      {"eff_user"s,         get_effective_username()},
+
+      {"mem_page"s,         get_memory_page_size()},
+      {"phys_mem"s,         get_physical_memory()},
+      {"tot_cpu"s,          get_total_cpu_cores()},
+      {"avail_cpu"s,        get_available_cpu_cores()},
+      {"proc_id"s,          get_process_id()}
   });
 }
 

@@ -192,7 +192,7 @@ class Program final
         std::shared_ptr<Record> record_end =
             get_event_record(*(_data->_source_location), EventCategory::Profile, Event::ProgramEnd,
                              UUID(), _data->_begin_id);
-
+        record_end->insert({{"run"s, get_program_record()}});   // used for data aggregation
         sink::g_sink_manager.write_record(record_end);
       }
     }
