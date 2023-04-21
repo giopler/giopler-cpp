@@ -14,9 +14,9 @@ int fibonacci(int n)
 int main()
 {
   giopler::dev::confirm(fibonacci( 1) ==    1);
-  // giopler::dev::confirm(fibonacci(10) ==   55);
-  // giopler::dev::confirm(fibonacci(13) ==  233);
-  // giopler::dev::confirm(fibonacci(19) == 4181);
+  giopler::dev::confirm(fibonacci(10) ==   55);
+  giopler::dev::confirm(fibonacci(13) ==  233);
+  giopler::dev::confirm(fibonacci(19) == 4181);
 
   return EXIT_SUCCESS;
 }

@@ -102,7 +102,7 @@ class Trace final
   Trace* _parent_trace_object;
   UUID _object_id;              // object id for this stack frame
   const char* _function_name;   // function name for this stack frame
-  bool _is_leaf = true;   // assume true until we know otherwise
+  bool _is_leaf = true;         // assume true until we know otherwise
 };
 
 // -----------------------------------------------------------------------------
@@ -166,6 +166,7 @@ class Profile final
 };
 
 // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
 /// singleton instance for program-wide data
 // this is a private class for library internal use only
 // collects the initial system information
@@ -222,8 +223,9 @@ class Thread final
     {
       if constexpr (g_build_mode == BuildMode::Dev || g_build_mode == BuildMode::Prof || g_build_mode == BuildMode::Bench) {
         _data = std::make_unique<ThreadData>();
+        constexpr bool is_profiling = (g_build_mode == BuildMode::Prof || g_build_mode == BuildMode::Bench);
 
-        if constexpr (g_build_mode == BuildMode::Prof || g_build_mode == BuildMode::Bench) {
+        if constexpr (is_profiling) {
           _data->_profile = std::make_unique<Profile>();
         }
 
@@ -231,8 +233,7 @@ class Thread final
         _data->_trace           = std::make_unique<Trace>(_data->_begin_id, "<thread>");
 
         std::shared_ptr<Record> record_begin =
-            get_event_record(source_location, EventCategory::Profile, Event::ThreadBegin,
-                             _data->_begin_id);
+            get_event_record(source_location, EventCategory::Profile, Event::ThreadBegin, _data->_begin_id);
         record_begin->insert({{"oids"s, _data->_trace->get_object_ids()}});
         record_begin->insert({{"funcs"s, _data->_trace->get_function_names()}});
         sink::g_sink_manager.write_record(record_begin);
@@ -241,11 +242,12 @@ class Thread final
 
     ~Thread() {
       if constexpr (g_build_mode == BuildMode::Dev || g_build_mode == BuildMode::Prof || g_build_mode == BuildMode::Bench) {
+        constexpr bool is_profiling = (g_build_mode == BuildMode::Prof || g_build_mode == BuildMode::Bench);
         std::shared_ptr<Record> record_end =
-            get_event_record(*(_data->_source_location), EventCategory::Profile, Event::ThreadEnd,
-                             UUID(), _data->_begin_id);
+            get_event_record(*(_data->_source_location), EventCategory::Profile,
+                             Event::ThreadEnd, UUID(), _data->_begin_id);
 
-        if constexpr (g_build_mode == BuildMode::Prof || g_build_mode == BuildMode::Bench) {
+        if constexpr (is_profiling) {
           record_end->insert({{"prof_tot"s, _data->_profile->get_total_counters_record()}});
           record_end->insert({{"prof_self"s,  _data->_profile->get_self_counters_record()}});
         }
@@ -292,8 +294,9 @@ class Function final
     {
       if constexpr (g_build_mode == BuildMode::Dev || g_build_mode == BuildMode::Prof || g_build_mode == BuildMode::Bench) {
         _data = std::make_unique<FunctionData>();
+        constexpr bool is_profiling = (g_build_mode == BuildMode::Prof);
 
-        if constexpr (g_build_mode == BuildMode::Prof || g_build_mode == BuildMode::Bench) {
+        if constexpr (is_profiling) {
           _data->_profile = std::make_unique<Profile>();
         }
 
@@ -302,21 +305,27 @@ class Function final
         _data->_trace           = std::make_unique<Trace>(_data->_begin_id, _data->_source_location->function_name());
 
         std::shared_ptr<Record> record_begin =
-            get_event_record(source_location, EventCategory::Profile, Event::FunctionBegin,
-                             _data->_begin_id, UUID::get_nil(), workload);
-        record_begin->insert({{"oids"s, _data->_trace->get_object_ids()}});
-        record_begin->insert({{"funcs"s, _data->_trace->get_function_names()}});
+            get_event_record(source_location, EventCategory::Profile,
+                             Event::FunctionBegin, _data->_begin_id, UUID::get_nil(), workload);
         sink::g_sink_manager.write_record(record_begin);
       }
     }
 
     ~Function() {
       if constexpr (g_build_mode == BuildMode::Dev || g_build_mode == BuildMode::Prof || g_build_mode == BuildMode::Bench) {
+        constexpr bool is_profiling = (g_build_mode == BuildMode::Prof);
         std::shared_ptr<Record> record_end =
-            get_event_record(*(_data->_source_location), EventCategory::Profile, Event::FunctionEnd,
-                             UUID(), _data->_begin_id, _data->_workload, _data->_trace->is_leaf());
+            get_event_record(*(_data->_source_location), EventCategory::Profile,
+                             Event::FunctionEnd, UUID(), _data->_begin_id,
+                             _data->_workload, _data->_trace->is_leaf());
 
-        if constexpr (g_build_mode == BuildMode::Prof) {
+        // include stack trace only on leaf functions
+        if (_data->_trace->is_leaf()) {
+          record_end->insert({{"oids"s, _data->_trace->get_object_ids()}});
+          record_end->insert({{"funcs"s, _data->_trace->get_function_names()}});
+        }
+
+        if constexpr (is_profiling) {
           record_end->insert({{"prof_tot"s, _data->_profile->get_total_counters_record()}});
           record_end->insert({{"prof_self"s,  _data->_profile->get_self_counters_record()}});
         }

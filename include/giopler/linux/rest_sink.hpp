@@ -328,8 +328,8 @@ class Rest : public Sink
         "Content-Length: %lu\r\n\r\n",
         host.c_str(), port, token.c_str(), json_body.length());
 
-      printf("HTTP Request Headers:\n%s\n", headers);
-      printf("HTTP Request Body:\n%s\n", json_body.data());
+      // printf("HTTP Request Headers:\n%s\n", headers);
+      // printf("HTTP Request Body:\n%s\n", json_body.data());
 
       // create the socket
       sockfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -396,7 +396,7 @@ class Rest : public Sink
       close(sockfd);
 
       // process response
-      printf("HTTP Response:\n%s\n",response);
+      // printf("HTTP Response:\n%s\n",response);
   }
 };
 

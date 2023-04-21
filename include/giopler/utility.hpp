@@ -321,7 +321,7 @@ class UUID
     [[nodiscard]] std::string get_string() const { return value_; }
 
     static UUID get_nil() {
-      return UUID{"00000000-0000-0000-0000-000000000000"s};
+      return UUID{"00000000-0000-4000-8000-000000000000"s};
     }
 
  private:
