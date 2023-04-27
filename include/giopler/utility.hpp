@@ -240,7 +240,14 @@ std::string format_timestamp(const Timestamp ts)
 {
   const std::uint64_t timestamp_ns = to_nanoseconds(ts);
   const std::uint64_t ns = timestamp_ns % 1000'000'000l;
-  return format("{0:%FT%T}.{1:09d}{0:%Ez}", ts, ns);
+
+  // support for %Ez was merged into libfmt on December 10, 2022
+  // https://github.com/fmtlib/fmt/issues/3220
+  // current released version is 9.1.0 from August 2022
+  const std::string tz = format("{0:%z}", ts);   // "-0700"
+  const std::string colon_tz = tz.substr(0, 3) + ":" + tz.substr(3, 2);
+
+  return format("{0:%FT%T}.{1:09d}{2}", ts, ns, colon_tz);
 }
 
 // -----------------------------------------------------------------------------

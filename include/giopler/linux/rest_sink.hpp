@@ -128,7 +128,7 @@ class Rest : public Sink
       post(json_body);
     }
 
-    return true;   // record was not filtered and it was written out
+    return true;   // record was not filtered and it was written out (vestigial)
   }
 
   void flush() override { }
