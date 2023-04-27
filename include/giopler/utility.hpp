@@ -240,7 +240,7 @@ std::string format_timestamp(const Timestamp ts)
 {
   const std::uint64_t timestamp_ns = to_nanoseconds(ts);
   const std::uint64_t ns = timestamp_ns % 1000'000'000l;
-  return format("{0:%FT%T}.{1:09d}{0:%zZ}", ts, ns);
+  return format("{0:%FT%T}.{1:09d}{0:%Ez}", ts, ns);
 }
 
 // -----------------------------------------------------------------------------

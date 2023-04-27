@@ -74,6 +74,11 @@ target_link_libraries(giopler INTERFACE
 )
 
 # ------------------------------------------------------------------------------
+add_executable(hello "${CMAKE_CURRENT_SOURCE_DIR}/sample/hello.cpp")
+target_compile_options(hello PRIVATE -Werror -Wall)
+target_link_libraries(hello PRIVATE giopler m)
+
+# ------------------------------------------------------------------------------
 add_executable(factorial "${CMAKE_CURRENT_SOURCE_DIR}/sample/factorial.cpp")
 target_compile_options(factorial PRIVATE -Werror -Wall)
 target_link_libraries(factorial PRIVATE giopler m)
