@@ -578,7 +578,7 @@ std::shared_ptr<Record> get_program_record() {
 
       {"mem_page"s,         get_memory_page_size()},
       {"phys_mem"s,         get_physical_memory()},
-      {"tot_cpu"s,          get_total_cpu_cores()},
+      {"conf_cpu"s,         get_conf_cpu_cores()},
       {"avail_cpu"s,        get_available_cpu_cores()},
       {"proc_id"s,          get_process_id()}
   });

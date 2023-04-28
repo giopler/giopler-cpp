@@ -86,7 +86,7 @@ uint64_t get_physical_memory()
 #if defined(GIOPLER_PLATFORM_LINUX)      // Linux kernel; could be GNU or Android
 #include <sys/sysinfo.h>
 namespace giopler {
-uint64_t get_total_cpu_cores()
+uint64_t get_conf_cpu_cores()
 {
   static const auto total_cpu_cores = static_cast<uint64_t>(get_nprocs_conf());
   return total_cpu_cores;
@@ -94,7 +94,7 @@ uint64_t get_total_cpu_cores()
 }   // namespace giopler
 #else
 namespace giopler {
-uint64_t get_total_cpu_cores()
+uint64_t get_conf_cpu_cores()
 {
   return 0;
 }
