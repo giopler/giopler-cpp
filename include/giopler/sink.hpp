@@ -108,6 +108,9 @@ class SinkManager {
   void flush() {
     {
       const std::lock_guard<std::mutex> lock{_mutex};
+      if (_workers.size() > 1) {
+        std::cout << "Sending remaining " << _workers.size() << " events to Giopler..." << std::endl;
+      }
       wait_workers();
     }
     for (auto&& sink : _sinks) {
