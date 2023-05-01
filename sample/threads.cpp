@@ -1,4 +1,3 @@
-
 #include "giopler/giopler.hpp"
 #include <cstdlib>
 #include <thread>

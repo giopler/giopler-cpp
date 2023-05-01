@@ -3,21 +3,28 @@
 #include <cstdlib>
 
 // -----------------------------------------------------------------------------
-void hello(int hellos)
+void there(int theres)
 {
-  giopler::dev::Function function(hellos);
-  giopler::dev::confirm(hellos);
+  giopler::dev::Function function;
+  std::cout << "Hello, there!" << std::endl;
+  if (theres--)   there(theres);
+}
+
+// -----------------------------------------------------------------------------
+void world(int theres)
+{
+  giopler::dev::Function function;
   std::cout << "Hello, world!" << std::endl;
-  giopler::dev::line("printed hello");
-  if (hellos--)   hello(hellos);
+  there();
 }
 
 // -----------------------------------------------------------------------------
 int main()
 {
   giopler::dev::Function function;
-  hello(2);
-  giopler::prod::branch("done with hellos");
+
+  world(1);
+  there(2);
 
   return EXIT_SUCCESS;
 }

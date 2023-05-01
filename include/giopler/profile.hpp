@@ -178,10 +178,10 @@ class Program final
     {
       if constexpr (g_build_mode != BuildMode::Off) {
         _data = std::make_unique<ProgramData>();
-        _data->_source_location = std::make_unique<giopler::source_location>(source_location);
+        _data->_source_location = std::make_unique<giopler::source_location>(source_location.file_name(), "<program>", source_location.line());
 
         std::shared_ptr<Record> record_begin =
-            get_event_record(source_location, EventCategory::Profile, Event::ProgramBegin,
+            get_event_record(*(_data->_source_location), EventCategory::Profile, Event::ProgramBegin,
                              _data->_begin_id);
         record_begin->insert({{"run"s, get_program_record()}});
         sink::g_sink_manager.write_record(record_begin);
