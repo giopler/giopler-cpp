@@ -7,7 +7,7 @@ void there(int theres)
 {
   giopler::dev::Function function;
   std::cout << "Hello, there!" << std::endl;
-  if (theres--)   there(theres);
+  if (--theres)   there(theres);
 }
 
 // -----------------------------------------------------------------------------
@@ -15,7 +15,7 @@ void world(int theres)
 {
   giopler::dev::Function function;
   std::cout << "Hello, world!" << std::endl;
-  there();
+  there(2);
 }
 
 // -----------------------------------------------------------------------------

@@ -29,6 +29,7 @@
 #endif
 
 #include <math.h>
+#include <cstring>
 #include "giopler/record.hpp"
 
 // -----------------------------------------------------------------------------

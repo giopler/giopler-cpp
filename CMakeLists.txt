@@ -89,6 +89,11 @@ target_compile_options(there PRIVATE -Werror -Wall)
 target_link_libraries(there PRIVATE giopler m)
 
 # ------------------------------------------------------------------------------
+add_executable(collatz "${CMAKE_CURRENT_SOURCE_DIR}/sample/collatz.cpp")
+target_compile_options(collatz PRIVATE -Werror -Wall)
+target_link_libraries(collatz PRIVATE giopler m)
+
+# ------------------------------------------------------------------------------
 add_executable(factorial "${CMAKE_CURRENT_SOURCE_DIR}/sample/factorial.cpp")
 target_compile_options(factorial PRIVATE -Werror -Wall)
 target_link_libraries(factorial PRIVATE giopler m)

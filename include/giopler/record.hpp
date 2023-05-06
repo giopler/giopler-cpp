@@ -317,27 +317,27 @@ void record_value_to_json(const RecordValue& value, std::stringstream& buffer)
 {
     switch (value.get_type()) {
       case RecordValue::Type::Boolean: {
-        buffer << format("{}", value.get_boolean());
+        buffer << gformat("{}", value.get_boolean());
         break;
       }
 
       case RecordValue::Type::Integer: {
-        buffer << format("{}", value.get_integer());
+        buffer << gformat("{}", value.get_integer());
         break;
       }
 
       case RecordValue::Type::Real: {
-        buffer << format("{}", value.get_real());
+        buffer << gformat("{}", value.get_real());
         break;
       }
 
       case RecordValue::Type::String: {
-        buffer << format("\"{}\"", value.get_string());
+        buffer << gformat("\"{}\"", value.get_string());
         break;
       }
 
       case RecordValue::Type::Timestamp: {
-        buffer << format("\"{}\"", format_timestamp(value.get_timestamp()));
+        buffer << gformat("\"{}\"", format_timestamp(value.get_timestamp()));
         break;
       }
 
@@ -352,7 +352,7 @@ void record_value_to_json(const RecordValue& value, std::stringstream& buffer)
             buffer.put(',');
           }
 
-          buffer << format("\"{}\":", rec_field);
+          buffer << gformat("\"{}\":", rec_field);
           record_value_to_json(rec_value, buffer);
         }
 
@@ -391,23 +391,23 @@ void record_value_to_json(const RecordValue& value, std::stringstream& buffer)
 std::string record_value_to_string(const RecordValue& value) {
   switch (value.get_type()) {
     case RecordValue::Type::Boolean: {
-      return format("\"{}\"", value.get_boolean());
+      return gformat("\"{}\"", value.get_boolean());
     }
 
     case RecordValue::Type::Integer: {
-      return format("\"{}\"", value.get_integer());
+      return gformat("\"{}\"", value.get_integer());
     }
 
     case RecordValue::Type::Real: {
-      return format("\"{}\"", value.get_real());
+      return gformat("\"{}\"", value.get_real());
     }
 
     case RecordValue::Type::String: {
-      return format("\"{}\"", value.get_string());
+      return gformat("\"{}\"", value.get_string());
     }
 
     case RecordValue::Type::Timestamp: {   // not sure if this is needed
-      return format("\"{}\"", format_timestamp(value.get_timestamp()));
+      return gformat("\"{}\"", format_timestamp(value.get_timestamp()));
     }
 
     case RecordValue::Type::Record: {

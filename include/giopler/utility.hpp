@@ -56,7 +56,7 @@ using namespace std::literals;
 #include <format>
 namespace giopler {
 template <typename... T>
-[[nodiscard]] std::string format(std::string_view fmt, T&&... args) {
+[[nodiscard]] std::string gformat(std::string_view fmt, T&&... args) {
   return std::vformat(fmt, std::make_format_args(args...));
 }
 }   // namespace giopler
@@ -66,7 +66,7 @@ template <typename... T>
 #include <fmt/chrono.h>
 namespace giopler {
 template <typename... T>
-[[nodiscard]] std::string format(std::string_view fmt, T&&... args) {
+[[nodiscard]] std::string gformat(std::string_view fmt, T&&... args) {
   return fmt::vformat(fmt, fmt::make_format_args(args...));
 }
 }   // namespace giopler
@@ -151,7 +151,7 @@ std::filesystem::path create_filename(const std::string_view extension = "txt") 
   const uint64_t process_id{get_process_id()};
   const uint32_t salt{generator() % 10'000};   // up to four digits
   const std::string extension_dot = (!extension.empty() && extension[0] != '.') ? "." : "";
-  const std::string filename{format("{}-{}-{}{}{}", program_name, process_id, salt, extension_dot, extension)};
+  const std::string filename{gformat("{}-{}-{}{}{}", program_name, process_id, salt, extension_dot, extension)};
   return filename;
 }
 
@@ -244,10 +244,10 @@ std::string format_timestamp(const Timestamp ts)
   // support for %Ez was merged into libfmt on December 10, 2022
   // https://github.com/fmtlib/fmt/issues/3220
   // current released version is 9.1.0 from August 2022
-  const std::string tz = format("{0:%z}", ts);   // "-0700"
+  const std::string tz = gformat("{0:%z}", ts);   // "-0700"
   const std::string colon_tz = tz.substr(0, 3) + ":" + tz.substr(3, 2);
 
-  return format("{0:%FT%T}.{1:09d}{2}", ts, ns, colon_tz);
+  return gformat("{0:%FT%T}.{1:09d}{2}", ts, ns, colon_tz);
 }
 
 // -----------------------------------------------------------------------------
@@ -309,7 +309,7 @@ public:
 std::string format_source_location(const source_location &location)
 {
     std::string message =
-      format("{}({}): {}",
+      gformat("{}({}): {}",
              location.file_name(),
              location.line(),
              location.function_name());

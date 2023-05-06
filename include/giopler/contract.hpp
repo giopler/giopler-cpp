@@ -89,7 +89,7 @@ void argument([[maybe_unused]] const bool condition,
     sink::g_sink_manager.flush();   // throw could terminate program
 
     const std::string message =
-      format("ERROR: {}: invalid argument",
+      gformat("ERROR: {}: invalid argument",
              format_source_location(source_location));
     throw contract_violation{message};
   }
@@ -112,7 +112,7 @@ void expect([[maybe_unused]] const bool condition,
     sink::g_sink_manager.flush();   // throw could terminate program
 
     const std::string message =
-      format("ERROR: {}: expect condition failed",
+      gformat("ERROR: {}: expect condition failed",
              format_source_location(source_location));
     throw contract_violation{message};
   }
@@ -134,7 +134,7 @@ void confirm([[maybe_unused]] const bool condition,
     sink::g_sink_manager.flush();   // throw could terminate program
 
     const std::string message =
-      format("ERROR: {}: confirm failed",
+      gformat("ERROR: {}: confirm failed",
              format_source_location(source_location));
     throw contract_violation{message};
   }
@@ -173,7 +173,7 @@ class Invariant final {
       sink::g_sink_manager.flush();   // throw could terminate program
 
       const std::string message =
-        format("ERROR: {}: invariant failed on entry",
+        gformat("ERROR: {}: invariant failed on entry",
                format_source_location(_source_location));
       throw contract_violation{message};
     }
@@ -193,7 +193,7 @@ class Invariant final {
         sink::g_sink_manager.flush();   // throw could terminate program
 
         const std::string message =
-          format("ERROR: {}: invariant failed on exit",
+          gformat("ERROR: {}: invariant failed on exit",
                  format_source_location(_source_location));
         throw contract_violation{message};
       } catch(...) {
@@ -240,7 +240,7 @@ class Ensure final {
         sink::g_sink_manager.flush();   // throw could terminate program
 
         const std::string message =
-          format("ERROR: {}: ensure condition failed on exit",
+          gformat("ERROR: {}: ensure condition failed on exit",
                  format_source_location(_source_location));
         throw contract_violation{message};
       } catch(...) {
@@ -291,7 +291,7 @@ void certify([[maybe_unused]] const bool condition,
     sink::g_sink_manager.flush();   // throw could terminate program
 
     const std::string message =
-      format("ERROR: {}: certify failed",
+      gformat("ERROR: {}: certify failed",
              format_source_location(source_location));
     throw contract_violation{message};
   }

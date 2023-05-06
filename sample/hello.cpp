@@ -9,7 +9,7 @@ void hello(int hellos)
   giopler::dev::confirm(hellos);
   std::cout << "Hello, world!" << std::endl;
   giopler::dev::line("printed hello");
-  if (hellos--)   hello(hellos);
+  if (--hellos)   hello(hellos);
 }
 
 // -----------------------------------------------------------------------------
