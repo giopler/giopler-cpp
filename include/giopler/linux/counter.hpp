@@ -45,7 +45,7 @@ namespace giopler::dev
 {
 
 // -----------------------------------------------------------------------------
-class LinuxEvent {
+class LinuxEvent final {
  public:
   LinuxEvent() : _num_events{} { }
 
@@ -126,12 +126,12 @@ class LinuxEvent {
     return read_event(_name2, _fd2);
   }
 
-  int64_t read_event3() {
+  int64_t read_event3() {             // not currently used
     assert(_num_events >= 3);
     return read_event(_name3, _fd3);
   }
 
-  int64_t read_event4() {
+  int64_t read_event4() {             // not currently used
     assert(_num_events >= 4);
     return read_event(_name4, _fd4);
   }
@@ -140,7 +140,7 @@ class LinuxEvent {
   enum class Group { leader, single };
   const int _num_events;
   std::string_view _name1, _name2, _name3, _name4;
-  int _fd1, _fd2, _fd3, _fd4;
+  int _fd1 = -1, _fd2 = -1, _fd3 = -1, _fd4 = -1;     // file descriptors
 
   // measures the calling process/thread on any CPU
   // state saved/restored on context switch
@@ -231,7 +231,7 @@ class LinuxEvent {
 };
 
 // -----------------------------------------------------------------------------
-class LinuxEvents {
+class LinuxEvents final {
  public:
   explicit LinuxEvents() {
     if constexpr (g_build_mode == BuildMode::Prof) {
@@ -262,28 +262,27 @@ class LinuxEvents {
   /// get the current values of the performance counters
   Record get_snapshot() {
     return Record({
-      {"prof.sw.cpu_clock"s,        ns_to_sec(_fd_sw_cpu_clock->read_event())},
-      {"prof.sw.task_clock"s,       ns_to_sec(_fd_sw_task_clock->read_event())},
-      {"prof.sw.page_faults"s,      _fd_sw_page_faults->read_event()},
-      {"prof.sw.context_switches"s, _fd_sw_context_switches->read_event()},
-      {"prof.sw.cpu_migrations"s,   _fd_sw_cpu_migrations->read_event()},
-      {"prof.sw.page_faults_min"s,  _fd_sw_page_faults_min->read_event()},
-      {"prof.sw.page_faults_maj"s,  _fd_sw_page_faults_maj->read_event()},
-      {"prof.sw.alignment_faults"s, _fd_sw_alignment_faults->read_event()},
-      {"prof.sw.emulation_faults"s, _fd_sw_emulation_faults->read_event()},
+      {"sw_cpu_clck"s,        ns_to_sec(_fd_sw_cpu_clock->read_event())},
+      {"sw_task_clck"s,       ns_to_sec(_fd_sw_task_clock->read_event())},
+      {"sw_pg_fault"s,        _fd_sw_page_faults->read_event()},
+      {"sw_cntxt_swtch"s,     _fd_sw_context_switches->read_event()},
+      {"sw_cpu_migrat"s,      _fd_sw_cpu_migrations->read_event()},
+      {"sw_pg_fault_min"s,    _fd_sw_page_faults_min->read_event()},
+      {"sw_pg_fault_maj"s,    _fd_sw_page_faults_maj->read_event()},
+      {"sw_align_fault"s,     _fd_sw_alignment_faults->read_event()},
+      {"sw_emul_fault"s,      _fd_sw_emulation_faults->read_event()},
 
-      {""s, _fd_hw_cpu_cycles_instr_group->read_event1()},
-      {""s, _fd_hw_cpu_cycles_instr_group->read_event2()},
+      {"hw_cpu_cycl"s,        _fd_hw_cpu_cycles_instr_group->read_event1()},
+      {"hw_instr"s,           _fd_hw_cpu_cycles_instr_group->read_event2()},
 
-      {""s, _fd_hw_cpu_stalled_cycles_group->read_event1()},
-      {""s, _fd_hw_cpu_stalled_cycles_group->read_event2()},
+      {"hw_stall_cycl_frnt"s, _fd_hw_cpu_stalled_cycles_group->read_event1()},
+      {"hw_stall_cycl_back"s, _fd_hw_cpu_stalled_cycles_group->read_event2()},
 
-      {""s, _fd_hw_branch_instructions_misses_group->read_event1()},
-      {""s, _fd_hw_branch_instructions_misses_group->read_event2()},
+      {"hw_cache_ref"s,       _fd_hw_branch_instructions_misses_group->read_event1()},
+      {"hw_cache_miss"s,      _fd_hw_branch_instructions_misses_group->read_event2()},
 
-      {""s, _fd_hw_cache_references_misses_group->read_event1()},
-      {""s, _fd_hw_cache_references_misses_group->read_event2()}
-
+      {"hw_brnch_instr"s,     _fd_hw_cache_references_misses_group->read_event1()},
+      {"hw_brnch_miss"s,      _fd_hw_cache_references_misses_group->read_event2()}
     });
   }
 
@@ -307,7 +306,7 @@ class LinuxEvents {
   std::unique_ptr<LinuxEvent> _fd_hw_cpu_stalled_cycles_group;
 
   // Cache accesses.  Usually this indicates Last Level Cache accesses.
-  // Cache misses.  Usually this indicates Last Level Cache misses.
+  // Cache misses.    Usually this indicates Last Level Cache misses.
   std::unique_ptr<LinuxEvent> _fd_hw_cache_references_misses_group;
 
   // Retired branch instructions.
@@ -358,7 +357,6 @@ class LinuxEvents {
                                      PERF_TYPE_HARDWARE, PERF_COUNT_HW_CACHE_REFERENCES,
                                      "PERF_COUNT_HW_CACHE_MISSES",
                                      PERF_TYPE_HARDWARE, PERF_COUNT_HW_CACHE_MISSES);
-
   }
 };
 
