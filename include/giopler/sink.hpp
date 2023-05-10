@@ -33,7 +33,7 @@
 #include <functional>
 #include <future>
 #include <iostream>
-#include <list>
+#include <forward_list>
 #include <memory>
 #include <mutex>
 #include <ostream>
@@ -72,7 +72,7 @@ struct Sink {
 
 // -----------------------------------------------------------------------------
 /// Sink management class. Thread safe.
-class SinkManager {
+class SinkManager final {
  public:
   SinkManager() : _sinks{}, _workers{} { }
 
@@ -100,7 +100,7 @@ class SinkManager {
     const std::lock_guard<std::mutex> lock{_mutex};
     check_workers();   // check before adding to avoid checking newly added workers
     for (auto&& sink : _sinks) {
-      _workers.emplace_back(std::async(std::launch::async, [&sink, record]{return sink->write_record(record);}));
+      _workers.emplace_front(std::async(std::launch::async, [&sink, record]{return sink->write_record(record);}));
     }
   }
 
@@ -108,8 +108,8 @@ class SinkManager {
   void flush() {
     {
       const std::lock_guard<std::mutex> lock{_mutex};
-      if (_workers.size() > 1) {
-        std::cout << "Sending remaining " << _workers.size() << " events to Giopler..." << std::endl;
+      if (!_workers.empty()) {
+        std::cout << "Sending remaining events to Giopler..." << std::endl;
       }
       wait_workers();
     }
@@ -121,9 +121,9 @@ class SinkManager {
  private:
   /// Sink objects are not copied but are called from multiple threads, one for each worker.
   std::vector<std::unique_ptr<Sink>> _sinks;
-  std::list<std::future<bool>> _workers;
-  std::mutex _mutex;
   std::once_flag _create_sinks_once_flag;
+  std::mutex _mutex;
+  std::forward_list<std::future<bool>> _workers;
 
   /// Create default sinks if write attempted and no sinks defined already
   static void create_sinks();
@@ -131,13 +131,15 @@ class SinkManager {
   /// Check and remove workers that have already finished executing.
   void check_workers() {
     _workers.remove_if([](std::future<bool>& fut)
-      { return fut.wait_for(0s) == std::future_status::ready; });
+        { return fut.wait_for(0s) == std::future_status::ready; });
   }
 
   /// Wait for the workers to finish and then delete them.
   void wait_workers() {
-    _workers.remove_if([](std::future<bool>& fut)
-      { fut.wait(); return true; });
+      _workers.remove_if([](std::future<bool> &fut) {
+        fut.wait();
+        return true;
+      });
   }
 };
 
