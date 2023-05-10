@@ -113,9 +113,10 @@ class Profile final
 {
  public:
   explicit Profile() {
-    Timestamp start_time  = now();
+    const Timestamp start_time = now();
     _event_counters_start = std::make_shared<Record>(read_event_counters());
-    _event_counters_start->insert({{"prof.duration"s, to_nanoseconds(start_time) }});
+    _event_counters_start->insert({{"dur"s, to_seconds(start_time) }});
+    _event_counters_children = std::make_shared<Record>();
 
     _parent_profile_object  = _profile_object;
     _profile_object         = this;
@@ -150,16 +151,15 @@ class Profile final
     if (_frozen)   return;
     _frozen = true;
 
-    Timestamp end_time = now();
+    const Timestamp end_time = now();
     event_counters_total = std::make_shared<Record>(read_event_counters());
-    event_counters_total->insert({{"prof.duration"s, to_nanoseconds(end_time) }});
+    event_counters_total->insert({{"dur"s, to_seconds(end_time) }});
     subtract_number_record(*event_counters_total, *_event_counters_start);
 
-    if (_parent_profile_object) {
+    if (_parent_profile_object) {   // subtract our times from the parent's children record
       add_number_record(*(_parent_profile_object->_event_counters_children), *event_counters_total);
     }
 
-    (*event_counters_total)["prof.duration"s] = ns_to_sec((*event_counters_total)["prof.duration"s].get_integer());
     event_counters_self = std::make_shared<Record>(*event_counters_total);
     subtract_number_record(*event_counters_self, *_event_counters_children);
   }

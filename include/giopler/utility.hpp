@@ -199,7 +199,7 @@ static inline const Timestamp start_time = now();
 
 // -----------------------------------------------------------------------------
 /// convert the given Timestamp into nanoseconds
-std::uint64_t to_nanoseconds(const Timestamp ts) {
+constexpr std::uint64_t to_nanoseconds(const Timestamp ts) {
   const std::uint64_t timestamp_ns =
     std::chrono::duration_cast<std::chrono::nanoseconds>(ts.time_since_epoch()).count();
   return timestamp_ns;
@@ -207,14 +207,20 @@ std::uint64_t to_nanoseconds(const Timestamp ts) {
 
 // -----------------------------------------------------------------------------
 /// convert nanosecond counter to floating point seconds
-double ns_to_sec(const std::uint64_t ns) {
+constexpr double ns_to_sec(const std::uint64_t ns) {
   constexpr double factor = 0.000'000'001;
   return static_cast<double>(ns) * factor;
 }
 
 // -----------------------------------------------------------------------------
+/// convert the given Timestamp into seconds
+constexpr double to_seconds(const Timestamp ts) {
+  return ns_to_sec(to_nanoseconds(ts));
+}
+
+// -----------------------------------------------------------------------------
 /// return seconds in double between the two timestamps
-double timestamp_diff(const Timestamp start, const Timestamp end) {
+constexpr double timestamp_diff(const Timestamp start, const Timestamp end) {
   const std::uint64_t timestamp_start_ns = to_nanoseconds(start);
   const std::uint64_t timestamp_end_ns   = to_nanoseconds(end);
   const std::uint64_t delta_ns           = timestamp_end_ns - timestamp_start_ns;
@@ -238,16 +244,13 @@ double get_time_delta() {
 // Parameter example: const auto start = std::chrono::system_clock::now();
 std::string format_timestamp(const Timestamp ts)
 {
-  const std::uint64_t timestamp_ns = to_nanoseconds(ts);
-  const std::uint64_t ns = timestamp_ns % 1000'000'000l;
-
   // support for %Ez was merged into libfmt on December 10, 2022
   // https://github.com/fmtlib/fmt/issues/3220
   // current released version is 9.1.0 from August 2022
   const std::string tz = gformat("{0:%z}", ts);   // "-0700"
   const std::string colon_tz = tz.substr(0, 3) + ":" + tz.substr(3, 2);
 
-  return gformat("{0:%FT%T}.{1:09d}{2}", ts, ns, colon_tz);
+  return gformat("{0:%FT%T}{1}", ts, colon_tz);
 }
 
 // -----------------------------------------------------------------------------
