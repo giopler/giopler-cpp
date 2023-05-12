@@ -287,15 +287,15 @@ class LinuxEvents final {
   }
 
  private:
-  std::unique_ptr<LinuxEvent> _fd_sw_cpu_clock;         // This reports the CPU clock, a high-resolution per-CPU timer.
-  std::unique_ptr<LinuxEvent> _fd_sw_task_clock;        // This reports a clock count specific to the task that is running.
-  std::unique_ptr<LinuxEvent> _fd_sw_page_faults;       // This reports the number of page faults.
-  std::unique_ptr<LinuxEvent> _fd_sw_context_switches;  // This counts context switches.
-  std::unique_ptr<LinuxEvent> _fd_sw_cpu_migrations;    // This reports the number of times the process has migrated to a new CPU.
-  std::unique_ptr<LinuxEvent> _fd_sw_page_faults_min;   // This counts the number of minor page faults.
-  std::unique_ptr<LinuxEvent> _fd_sw_page_faults_maj;   // This counts the number of major page faults. These required disk I/O to handle.
-  std::unique_ptr<LinuxEvent> _fd_sw_alignment_faults;  // This counts the number of alignment faults.
-  std::unique_ptr<LinuxEvent> _fd_sw_emulation_faults;  // This  counts the number of emulation faults.
+  std::unique_ptr<LinuxEvent> _fd_sw_cpu_clock;         // CPU clock, a high-resolution per-CPU timer
+  std::unique_ptr<LinuxEvent> _fd_sw_task_clock;        // clock count specific to the task that is running
+  std::unique_ptr<LinuxEvent> _fd_sw_page_faults;       // number of page faults
+  std::unique_ptr<LinuxEvent> _fd_sw_context_switches;  // counts context switches
+  std::unique_ptr<LinuxEvent> _fd_sw_cpu_migrations;    // number of times the process has migrated to a new CPU
+  std::unique_ptr<LinuxEvent> _fd_sw_page_faults_min;   // counts the number of minor page faults
+  std::unique_ptr<LinuxEvent> _fd_sw_page_faults_maj;   // counts the number of major page faults. These required disk I/O to handle.
+  std::unique_ptr<LinuxEvent> _fd_sw_alignment_faults;  // counts the number of alignment faults
+  std::unique_ptr<LinuxEvent> _fd_sw_emulation_faults;  // counts the number of emulation faults
 
   // Total cycles.
   // Retired instructions.

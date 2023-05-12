@@ -589,7 +589,7 @@ std::shared_ptr<Record> get_event_record(const source_location& source_location,
                                          const EventCategory event_category,
                                          const Event event,
                                          const UUID& event_id = UUID(),
-                                         const UUID& event_begin_id = UUID::get_nil(),
+                                         const UUID& event_other_id = UUID::get_nil(),
                                          const double workload = 0,
                                          const bool is_leaf = false,
                                          const std::string_view message = ""sv)
@@ -600,7 +600,7 @@ std::shared_ptr<Record> get_event_record(const source_location& source_location,
 
       {"event_cat"s,          get_event_category_name(event_category)},
       {"event"s,              get_event_name(event)},
-      {"begin_id"s,           event_begin_id.get_string()},
+      {"other_id"s,           event_other_id.get_string()},
 
       {"time_diff"s,          get_time_delta()},
       {"thrd_seq"s,           get_thread_sequence()},
