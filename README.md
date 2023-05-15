@@ -2,7 +2,7 @@
 :description: A logging, profiling, and testing library for C and C++.
 :repository-url: https://github.com/giopler/giopler-cpp
 :license-type: MIT License (MIT)
-:author: Carlos Reyes
+:author: Giopler
 :source-highlighter: rouge
 :rouge-style: github
 :toc: preamble

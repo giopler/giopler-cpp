@@ -329,7 +329,7 @@ alg07(double *__restrict__ A,
 }
 
 // -------------------------------------------------------------------
-// Carlos, not blocked
+// custom, not blocked
 __attribute__ ((noinline))
 void
 alg08(double *__restrict__ A,
@@ -350,7 +350,7 @@ alg08(double *__restrict__ A,
 }
 
 // -------------------------------------------------------------------
-// Carlos, not blocked
+// custom, not blocked
 __attribute__ ((noinline))
 void
 alg09(double *__restrict__ A,
@@ -384,7 +384,7 @@ alg09(double *__restrict__ A,
 }
 
 // -------------------------------------------------------------------
-// Carlos, not blocked
+// custom, not blocked
 __attribute__ ((noinline))
 void
 alg10(double *__restrict__ A,
