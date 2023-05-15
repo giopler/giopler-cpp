@@ -1,7 +1,12 @@
 // Copyright (c) 2023 Giopler
-// Licensed under the Creative Commons Attribution-NoDerivatives 4.0 International license.
+// Creative Commons Attribution No Derivatives 4.0 International license
+// https://creativecommons.org/licenses/by-nd/4.0
 // SPDX-License-Identifier: CC-BY-ND-4.0
-// https://creativecommons.org/licenses/by-nd/4.0/
+//
+// Share         — copy and redistribute the material in any medium or format for any purpose, even commercially.
+// NoDerivatives — If you remix, transform, or build upon the material, you may not distribute the modified material.
+// Attribution   — You must give appropriate credit, provide a link to the license, and indicate if changes were made.
+//                 You may do so in any reasonable manner, but not in any way that suggests the licensor endorses you or your use.
 
 #pragma once
 #ifndef GIOPLER_GIOPLER_HPP

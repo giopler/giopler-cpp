@@ -6,7 +6,7 @@
 # Share         — copy and redistribute the material in any medium or format for any purpose, even commercially.
 # NoDerivatives — If you remix, transform, or build upon the material, you may not distribute the modified material.
 # Attribution   — You must give appropriate credit, provide a link to the license, and indicate if changes were made.
-#     You may do so in any reasonable manner, but not in any way that suggests the licensor endorses you or your use.
+#                 You may do so in any reasonable manner, but not in any way that suggests the licensor endorses you or your use.
 
 # Our target system is the current long-term support version of Ubuntu (22.04).
 # Ubuntu 22.04LTS includes CMake 3.22, CLang 14.0, Gcc 11.2, and OpenSSL 3.0.
