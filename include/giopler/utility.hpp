@@ -3,7 +3,7 @@
 // https://creativecommons.org/licenses/by-nd/4.0
 // SPDX-License-Identifier: CC-BY-ND-4.0
 //
-// Share         — copy and redistribute the material in any medium or format for any purpose, even commercially.
+// Share         — Copy and redistribute the material in any medium or format for any purpose, even commercially.
 // NoDerivatives — If you remix, transform, or build upon the material, you may not distribute the modified material.
 // Attribution   — You must give appropriate credit, provide a link to the license, and indicate if changes were made.
 //                 You may do so in any reasonable manner, but not in any way that suggests the licensor endorses you or your use.
@@ -42,10 +42,12 @@ using namespace std::literals;
 /// String formatting function
 #if defined(__cpp_lib_format)
 // https://en.cppreference.com/w/cpp/utility/format
+// CLion reports an invalid error here when using Gcc
+// https://youtrack.jetbrains.com/issue/CPP-33258/stdformat-reports-error
 #include <format>
 namespace giopler {
-template <typename... T>
-[[nodiscard]] std::string gformat(std::string_view fmt, T&&... args) {
+template <typename... Args>
+[[nodiscard]] std::string gformat(std::string_view fmt, Args&&... args) {
   return std::vformat(fmt, std::make_format_args(args...));
 }
 }   // namespace giopler

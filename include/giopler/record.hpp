@@ -3,7 +3,7 @@
 // https://creativecommons.org/licenses/by-nd/4.0
 // SPDX-License-Identifier: CC-BY-ND-4.0
 //
-// Share         — copy and redistribute the material in any medium or format for any purpose, even commercially.
+// Share         — Copy and redistribute the material in any medium or format for any purpose, even commercially.
 // NoDerivatives — If you remix, transform, or build upon the material, you may not distribute the modified material.
 // Attribution   — You must give appropriate credit, provide a link to the license, and indicate if changes were made.
 //                 You may do so in any reasonable manner, but not in any way that suggests the licensor endorses you or your use.
@@ -115,7 +115,28 @@ constexpr std::string_view get_event_name(const Event event) {
     case Event::ObjectBegin:    return "ObjectBegin"sv;
     case Event::ObjectEnd:      return "ObjectEnd"sv;
   }
-  return "UnknownEvent"sv;
+  return "Unknown"sv;
+}
+
+// -----------------------------------------------------------------------------
+/// status for contract, unit test, and benchmark events
+enum class EventStatus {
+  Passed,                   // condition was checked and it was successful
+  Failed,                   // condition was checked and it was not met
+  Exception,                // condition was checked and it failed due to thrown exception
+  Skipped,                  // condition was not checked (reporting event for tracing purposes)
+};
+
+// -----------------------------------------------------------------------------
+/// convert the event category enum value into a string
+constexpr std::string_view get_event_status(const EventStatus event_status) {
+  switch (event_status) {
+    case EventStatus::Passed:     return "Passed"sv;
+    case EventStatus::Failed:     return "Failed"sv;
+    case EventStatus::Exception:  return "Exception"sv;
+    case EventStatus::Skipped:    return "Skipped"sv;
+  }
+  return "Unknown"sv;
 }
 
 // -----------------------------------------------------------------------------
@@ -450,10 +471,49 @@ int64_t get_thread_sequence() {
 namespace giopler::dev {
 
 // -----------------------------------------------------------------------------
-/// set a thread-global class value
+/// set a thread-local id value
+// assign a unique value to it
+// examples: "cust.12345", "frame.3232"
+// inspired by the HTML 'id' attribute
+class Id final
+{
+ public:
+  explicit Id(std::string_view id_value) {
+    if constexpr (g_build_mode != BuildMode::Off) {
+      _data = std::make_unique<ObjectData>();
+      _data->_parent_id = _current_id;
+      _data->_id_value  = id_value;
+      _current_id       = this;
+    }
+  }
+
+  ~Id() {
+    if constexpr (g_build_mode != BuildMode::Off) {
+      _current_id = _data->_parent_id;
+    }
+  }
+
+  static std::string get_id() {
+    return _current_id ? _current_id->_data->_id_value : "";
+  }
+
+ private:
+  static inline thread_local Id* _current_id = nullptr;
+
+  struct ObjectData {
+    Id* _parent_id;
+    std::string _id_value;
+  };
+
+  // use a data object to help minimize impact when not enabled
+  std::unique_ptr<ObjectData> _data;
+};
+
+// -----------------------------------------------------------------------------
+/// set a thread-local class value
 // use with a hierarchical dot-separated list of identifiers
 // examples: "init.db", "disk.write.widget"
-// intended to be used similarly to the HTML 'class' attribute
+// inspired by the HTML 'class' attribute
 class Class final
 {
  public:
@@ -479,36 +539,8 @@ class Class final
 };
 
 // -----------------------------------------------------------------------------
-/// set a thread-global id value
-// assign a unique value to it
-// examples: "cust.12345", "frame.3232"
-// intended to be used similarly to the HTML 'id' attribute
-class Id final
-{
- public:
-  explicit Id(std::string_view id_value)
-  : _parent_id{_current_id},
-    _id_value{id_value}
-  {
-    _current_id = this;
-  }
-
-  ~Id() {
-    _current_id = _parent_id;
-  }
-
-  static std::string get_id() {
-    return _current_id ? _current_id->_id_value : "";
-  }
-
- private:
-  static inline thread_local Id* _current_id = nullptr;
-  Id* _parent_id;
-  std::string _id_value;
-};
-
-// -----------------------------------------------------------------------------
 /// User-defined attributes
+// NOTE: not currently used
 // these are automatically included with events sent
 // we update a copy of the parent object, so it contains all active attributes
 // this way we avoid a potential long recursive loop on every data request
@@ -576,11 +608,7 @@ std::shared_ptr<Record> get_program_record() {
 std::shared_ptr<Record> get_event_record(const source_location& source_location,
                                          const EventCategory event_category,
                                          const Event event,
-                                         const UUID& event_id = UUID(),
-                                         const UUID& event_other_id = UUID::get_nil(),
-                                         const double workload = 0,
-                                         const bool is_leaf = false,
-                                         const std::string_view message = ""sv)
+                                         const UUID& event_id)
 {
   return std::make_shared<Record>(Record{
       {"run_id"s,             get_run_id().get_string()},
@@ -588,7 +616,6 @@ std::shared_ptr<Record> get_event_record(const source_location& source_location,
 
       {"event_cat"s,          get_event_category_name(event_category)},
       {"event"s,              get_event_name(event)},
-      {"other_id"s,           event_other_id.get_string()},
 
       {"time_diff"s,          get_time_delta()},
       {"thrd_seq"s,           get_thread_sequence()},
@@ -596,7 +623,6 @@ std::shared_ptr<Record> get_event_record(const source_location& source_location,
       {"file"s,               source_location.file_name()},
       {"line"s,               source_location.line()},
       {"func"s,               source_location.function_name()},
-      {"msg"s,                message},
 
       {"thrd_id"s,            get_thread_id()},
       {"node_id"s,            get_node_id()},
@@ -605,9 +631,13 @@ std::shared_ptr<Record> get_event_record(const source_location& source_location,
 
       {"clss"s,               giopler::dev::Class::get_class()},
       {"id"s,                 giopler::dev::Id::get_id()},
-      {"wrkld"s,              workload},
-      {"is_leaf"s,            is_leaf}
-      //{"attributes"s,         giopler::dev::Attributes::get_attributes_record()}
+
+      // These are all optional. They are set by the event generator if needed using insert_or_assign().
+      {"other_id"s,           UUID::get_nil().get_string()},
+      {"msg"s,                ""sv},
+      {"wrkld"s,              0},
+      {"is_leaf"s,            false},
+      {"status"s,             "Skipped"}
   });
 }
 

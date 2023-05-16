@@ -2,7 +2,7 @@ Copyright (c) 2023 Giopler
 
 This code is licensed under the Creative Commons Attribution-NoDerivatives 4.0 International license.
 
-Share — copy and redistribute the material in any medium or format for any purpose, even commercially.
+Share — Copy and redistribute the material in any medium or format for any purpose, even commercially.
 
 NoDerivatives — If you remix, transform, or build upon the material, you may not distribute the modified material.
 

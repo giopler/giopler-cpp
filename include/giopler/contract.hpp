@@ -3,7 +3,7 @@
 // https://creativecommons.org/licenses/by-nd/4.0
 // SPDX-License-Identifier: CC-BY-ND-4.0
 //
-// Share         — copy and redistribute the material in any medium or format for any purpose, even commercially.
+// Share         — Copy and redistribute the material in any medium or format for any purpose, even commercially.
 // NoDerivatives — If you remix, transform, or build upon the material, you may not distribute the modified material.
 // Attribution   — You must give appropriate credit, provide a link to the license, and indicate if changes were made.
 //                 You may do so in any reasonable manner, but not in any way that suggests the licensor endorses you or your use.
@@ -66,8 +66,7 @@ namespace giopler::dev
 // the function's expectation of its arguments upon entry into the function
 // logs the error and throws exception
 void argument([[maybe_unused]] const bool condition,
-              [[maybe_unused]] const source_location& source_location =
-                source_location::current())
+              [[maybe_unused]] const source_location& source_location = source_location::current())
 {
   if constexpr (!(g_build_mode == BuildMode::Dev || g_build_mode == BuildMode::Test || g_build_mode == BuildMode::Qa)) {
     return;
