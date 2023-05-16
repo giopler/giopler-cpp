@@ -33,10 +33,10 @@ void line([[maybe_unused]] const std::string_view message = ""sv,
           [[maybe_unused]] const source_location& source_location = source_location::current())
 {
   if constexpr (g_build_mode == BuildMode::Dev) {
-    std::shared_ptr<Record> record =
-        get_event_record(source_location, EventCategory::Trace, Event::Line, UUID(),
-                         UUID::get_nil(), 0, false, message);
-    sink::g_sink_manager.write_record(record);
+    std::shared_ptr<Record> record_trace =
+        get_event_record(source_location, EventCategory::Trace, Event::Line, UUID());
+    record_trace->insert_or_assign("msg"s, message);
+    sink::g_sink_manager.write_record(record_trace);
   }
 }
 
@@ -47,10 +47,10 @@ void line([[maybe_unused]] StringFunction auto message_function,
           [[maybe_unused]] const source_location& source_location = source_location::current())
 {
   if constexpr (g_build_mode == BuildMode::Dev) {
-    std::shared_ptr<Record> record =
-        get_event_record(source_location, EventCategory::Trace, Event::Line, UUID(),
-                         UUID::get_nil(), 0, false, message_function());
-    sink::g_sink_manager.write_record(record);
+    std::shared_ptr<Record> record_trace =
+        get_event_record(source_location, EventCategory::Trace, Event::Line, UUID());
+    record_trace->insert_or_assign("msg"s, message_function());
+    sink::g_sink_manager.write_record(record_trace);
   }
 }
 
@@ -81,7 +81,7 @@ void set_breakpoint()
 {
   if constexpr (g_build_mode == BuildMode::Dev) {
 #if defined(__has_builtin) && __has_builtin(__builtin_debugtrap)
-      __builtin_debugtrap();   // CLang
+      __builtin_debugtrap();   // Clang
 #elif defined(__has_builtin) && __has_builtin(__debugbreak)
       __debugbreak();
 #elif defined(_MSC_VER) || defined(__INTEL_COMPILER)
@@ -111,10 +111,10 @@ void branch([[maybe_unused]] const std::string_view message = ""sv,
             [[maybe_unused]] const giopler::source_location& source_location = giopler::source_location::current())
 {
   if constexpr (g_build_mode != BuildMode::Off) {
-    std::shared_ptr<Record> record =
-        get_event_record(source_location, EventCategory::Trace, Event::Branch, UUID(),
-                         UUID::get_nil(), 0, false, message);
-    sink::g_sink_manager.write_record(record);
+    std::shared_ptr<Record> record_trace =
+        get_event_record(source_location, EventCategory::Trace, Event::Branch, UUID());
+    record_trace->insert_or_assign("msg"s, message);
+    sink::g_sink_manager.write_record(record_trace);
   }
 }
 
@@ -123,10 +123,10 @@ void branch([[maybe_unused]] StringFunction auto message_function,
             [[maybe_unused]] const giopler::source_location& source_location = giopler::source_location::current())
 {
   if constexpr (g_build_mode != BuildMode::Off) {
-    std::shared_ptr<Record> record =
-        get_event_record(source_location, EventCategory::Trace, Event::Branch, UUID(),
-                         UUID::get_nil(), 0, false,message_function());
-    sink::g_sink_manager.write_record(record);
+    std::shared_ptr<Record> record_trace =
+        get_event_record(source_location, EventCategory::Trace, Event::Branch, UUID());
+    record_trace->insert_or_assign("msg"s, message_function());
+    sink::g_sink_manager.write_record(record_trace);
   }
 }
 

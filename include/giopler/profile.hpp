@@ -170,8 +170,8 @@ class Program final
         _data->_source_location = std::make_unique<giopler::source_location>(source_location.file_name(), "<program>", source_location.line());
 
         std::shared_ptr<Record> record_begin =
-            get_event_record(*(_data->_source_location), EventCategory::Profile, Event::ProgramBegin,
-                             _data->_begin_id, _data->_end_id);
+            get_event_record(*(_data->_source_location), EventCategory::Profile, Event::ProgramBegin, _data->_begin_id);
+        record_begin->insert_or_assign("other_id"s, _data->_end_id.get_string());
         record_begin->insert({{"run"s, get_program_record()}});
         sink::g_sink_manager.write_record(record_begin);
       }
@@ -180,8 +180,8 @@ class Program final
     ~Program() {
       if constexpr (g_build_mode != BuildMode::Off) {
         std::shared_ptr<Record> record_end =
-            get_event_record(*(_data->_source_location), EventCategory::Profile, Event::ProgramEnd,
-                             _data->_end_id, _data->_begin_id);
+            get_event_record(*(_data->_source_location), EventCategory::Profile, Event::ProgramEnd, _data->_end_id);
+        record_end->insert_or_assign("other_id"s, _data->_begin_id.get_string());
         record_end->insert({{"run"s, get_program_record()}});   // used for data aggregation
         sink::g_sink_manager.write_record(record_end);
       }
@@ -223,8 +223,8 @@ class Thread final
         _data->_trace           = std::make_unique<Trace>(_data->_end_id, "<thread>");
 
         std::shared_ptr<Record> record_begin =
-            get_event_record(*(_data->_source_location), EventCategory::Profile, Event::ThreadBegin,
-                             _data->_begin_id, _data->_end_id);
+            get_event_record(*(_data->_source_location), EventCategory::Profile, Event::ThreadBegin, _data->_begin_id);
+        record_begin->insert_or_assign("other_id"s, _data->_end_id.get_string());
         record_begin->insert({{"uuids"s, _data->_trace->get_uuids()}});
         record_begin->insert({{"funcs"s, _data->_trace->get_function_names()}});
         sink::g_sink_manager.write_record(record_begin);
@@ -235,8 +235,8 @@ class Thread final
       if constexpr (g_build_mode == BuildMode::Dev || g_build_mode == BuildMode::Prof || g_build_mode == BuildMode::Bench) {
         constexpr bool is_profiling = (g_build_mode == BuildMode::Prof || g_build_mode == BuildMode::Bench);
         std::shared_ptr<Record> record_end =
-            get_event_record(*(_data->_source_location), EventCategory::Profile, Event::ThreadEnd,
-                             _data->_end_id, _data->_begin_id);
+            get_event_record(*(_data->_source_location), EventCategory::Profile, Event::ThreadEnd, _data->_end_id);
+        record_end->insert_or_assign("other_id"s, _data->_begin_id.get_string());
 
         if constexpr (is_profiling) {
           record_end->insert({{"prof_tot"s, _data->_profile->get_total_counters_record()}});
@@ -297,8 +297,9 @@ class Function final
         _data->_trace           = std::make_unique<Trace>(_data->_end_id, _data->_source_location->function_name());
 
         std::shared_ptr<Record> record_begin =
-            get_event_record(source_location, EventCategory::Profile,
-                             Event::FunctionBegin, _data->_begin_id, _data->_end_id, workload);
+            get_event_record(source_location, EventCategory::Profile, Event::FunctionBegin, _data->_begin_id);
+        record_begin->insert_or_assign("other_id"s, _data->_end_id.get_string());
+        record_begin->insert_or_assign("wrkld"s, workload);
         sink::g_sink_manager.write_record(record_begin);
       }
     }
@@ -307,10 +308,11 @@ class Function final
       if constexpr (g_build_mode == BuildMode::Dev || g_build_mode == BuildMode::Prof || g_build_mode == BuildMode::Bench) {
         constexpr bool is_profiling = (g_build_mode == BuildMode::Prof);
         std::shared_ptr<Record> record_end =
-            get_event_record(*(_data->_source_location), EventCategory::Profile,
-                             Event::FunctionEnd, _data->_end_id, _data->_begin_id,
-                             _data->_workload, _data->_trace->is_leaf());
+            get_event_record(*(_data->_source_location), EventCategory::Profile, Event::FunctionEnd, _data->_end_id);
 
+        record_end->insert_or_assign("other_id"s, _data->_begin_id.get_string());
+        record_end->insert_or_assign("wrkld"s, _data->_workload);
+        record_end->insert_or_assign("is_leaf"s, _data->_trace->is_leaf());
         record_end->insert({{"uuids"s, _data->_trace->get_uuids()}});
         record_end->insert({{"funcs"s, _data->_trace->get_function_names()}});
 
@@ -350,12 +352,11 @@ class Object final
     {
       if constexpr (g_build_mode == BuildMode::Dev || g_build_mode == BuildMode::Prof) {
         _data = std::make_unique<ObjectData>();
-
         _data->_source_location = std::make_unique<giopler::source_location>(source_location);
 
         std::shared_ptr<Record> record_begin =
-            get_event_record(source_location, EventCategory::Profile, Event::ObjectBegin,
-                             _data->_begin_id, _data->_end_id);
+            get_event_record(source_location, EventCategory::Profile, Event::ObjectBegin, _data->_begin_id);
+        record_begin->insert_or_assign("other_id"s, _data->_end_id.get_string());
         sink::g_sink_manager.write_record(record_begin);
       }
     }
@@ -363,9 +364,8 @@ class Object final
     ~Object() {
       if constexpr (g_build_mode == BuildMode::Dev || g_build_mode == BuildMode::Prof) {
         std::shared_ptr<Record> record_end =
-            get_event_record(*(_data->_source_location), EventCategory::Profile, Event::ObjectEnd,
-                             _data->_end_id, _data->_begin_id);
-
+            get_event_record(*(_data->_source_location), EventCategory::Profile, Event::ObjectEnd, _data->_end_id);
+        record_end->insert_or_assign("other_id"s, _data->_begin_id.get_string());
         sink::g_sink_manager.write_record(record_end);
       }
     }

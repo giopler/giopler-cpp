@@ -89,9 +89,9 @@ target_compile_options(there PRIVATE -Werror -Wall)
 target_link_libraries(there PRIVATE giopler m)
 
 # ------------------------------------------------------------------------------
-add_executable(collatz "${CMAKE_CURRENT_SOURCE_DIR}/sample/collatz.cpp")
-target_compile_options(collatz PRIVATE -Werror -Wall)
-target_link_libraries(collatz PRIVATE giopler m)
+add_executable(threads "${CMAKE_CURRENT_SOURCE_DIR}/sample/threads.cpp")
+target_compile_options(threads PRIVATE -Werror -Wall)
+target_link_libraries(threads PRIVATE giopler m)
 
 # ------------------------------------------------------------------------------
 add_executable(factorial "${CMAKE_CURRENT_SOURCE_DIR}/sample/factorial.cpp")
@@ -109,18 +109,18 @@ target_compile_options(fibonacci PRIVATE -Werror -Wall)
 target_link_libraries(fibonacci PRIVATE giopler m)
 
 # ------------------------------------------------------------------------------
+add_executable(collatz "${CMAKE_CURRENT_SOURCE_DIR}/sample/collatz.cpp")
+target_compile_options(collatz PRIVATE -Werror -Wall)
+target_link_libraries(collatz PRIVATE giopler m)
+
+# ------------------------------------------------------------------------------
 add_executable(matrices "${CMAKE_CURRENT_SOURCE_DIR}/sample/matrices.cpp")
 target_compile_options(matrices PRIVATE -Werror -Wall)
 target_link_libraries(matrices PRIVATE giopler m)
 
 # ------------------------------------------------------------------------------
-add_executable(threads "${CMAKE_CURRENT_SOURCE_DIR}/sample/threads.cpp")
-target_compile_options(threads PRIVATE -Werror -Wall)
-target_link_libraries(threads PRIVATE giopler m)
-
-# ------------------------------------------------------------------------------
-#add_compile_definitions(PRIVATE GIOPLER_BUILD_MODE_DEV=1)
-add_compile_definitions(PRIVATE GIOPLER_BUILD_MODE_PROF=1)
+add_compile_definitions(PRIVATE GIOPLER_BUILD_MODE_DEV=1)
+#add_compile_definitions(PRIVATE GIOPLER_BUILD_MODE_PROF=1)
 
 # ------------------------------------------------------------------------------
 if(BUILD_TESTING)

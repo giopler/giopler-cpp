@@ -123,7 +123,6 @@ constexpr std::string_view get_event_name(const Event event) {
 enum class EventStatus {
   Passed,                   // condition was checked and it was successful
   Failed,                   // condition was checked and it was not met
-  Exception,                // condition was checked and it failed due to thrown exception
   Skipped,                  // condition was not checked (reporting event for tracing purposes)
 };
 
@@ -133,7 +132,6 @@ constexpr std::string_view get_event_status(const EventStatus event_status) {
   switch (event_status) {
     case EventStatus::Passed:     return "Passed"sv;
     case EventStatus::Failed:     return "Failed"sv;
-    case EventStatus::Exception:  return "Exception"sv;
     case EventStatus::Skipped:    return "Skipped"sv;
   }
   return "Unknown"sv;
@@ -479,7 +477,8 @@ class Id final
 {
  public:
   explicit Id(std::string_view id_value) {
-    if constexpr (g_build_mode != BuildMode::Off) {
+    if constexpr (g_build_mode == BuildMode::Dev  || g_build_mode == BuildMode::Test ||
+                  g_build_mode == BuildMode::Prof || g_build_mode == BuildMode::Prod) {
       _data = std::make_unique<ObjectData>();
       _data->_parent_id = _current_id;
       _data->_id_value  = id_value;
@@ -488,7 +487,8 @@ class Id final
   }
 
   ~Id() {
-    if constexpr (g_build_mode != BuildMode::Off) {
+    if constexpr (g_build_mode == BuildMode::Dev  || g_build_mode == BuildMode::Test ||
+                  g_build_mode == BuildMode::Prof || g_build_mode == BuildMode::Prod) {
       _current_id = _data->_parent_id;
     }
   }
@@ -517,25 +517,37 @@ class Id final
 class Class final
 {
  public:
-  explicit Class(std::string_view class_value)
-  : _parent_class{_current_class},
-    _class_value{class_value}
-  {
-    _current_class = this;
+  explicit Class(std::string_view class_value) {
+    if constexpr (g_build_mode == BuildMode::Dev  || g_build_mode == BuildMode::Test ||
+                  g_build_mode == BuildMode::Prof || g_build_mode == BuildMode::Prod) {
+      _data = std::make_unique<ObjectData>();
+      _data->_parent_class  = _current_class;
+      _data->_class_value   = class_value;
+      _current_class        = this;
+    }
   }
 
   ~Class() {
-    _current_class = _parent_class;
+    if constexpr (g_build_mode == BuildMode::Dev  || g_build_mode == BuildMode::Test ||
+                  g_build_mode == BuildMode::Prof || g_build_mode == BuildMode::Prod) {
+      _current_class = _data->_parent_class;
+    }
   }
 
   static std::string get_class() {
-    return _current_class ? _current_class->_class_value : "";
+    return _current_class ? _current_class->_data->_class_value : "";
   }
 
  private:
   static inline thread_local Class* _current_class = nullptr;
-  Class* _parent_class;
-  std::string _class_value;
+
+  struct ObjectData {
+    Class* _parent_class;
+    std::string _class_value;
+  };
+
+  // use a data object to help minimize impact when not enabled
+  std::unique_ptr<ObjectData> _data;
 };
 
 // -----------------------------------------------------------------------------

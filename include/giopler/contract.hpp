@@ -68,18 +68,24 @@ namespace giopler::dev
 void argument([[maybe_unused]] const bool condition,
               [[maybe_unused]] const source_location& source_location = source_location::current())
 {
-  if constexpr (!(g_build_mode == BuildMode::Dev || g_build_mode == BuildMode::Test || g_build_mode == BuildMode::Qa)) {
-    return;
-  } else if (!condition) [[unlikely]] {
-    std::shared_ptr<Record> record =
-        get_event_record(source_location, EventCategory::Contract, Event::Argument);
-    sink::g_sink_manager.write_record(record);
-    sink::g_sink_manager.flush();   // throw could terminate program
+  if constexpr (g_build_mode == BuildMode::Dev || g_build_mode == BuildMode::Test || g_build_mode == BuildMode::Qa) {
+    if (!condition) [[unlikely]] {
+      std::shared_ptr<Record> record_failed =
+          get_event_record(source_location, EventCategory::Contract, Event::Argument, UUID());
+      record_failed->insert_or_assign("status"s, "Failed");
+      sink::g_sink_manager.write_record(record_failed);
+      sink::g_sink_manager.flush();   // throw could terminate program
 
-    const std::string message =
-      gformat("ERROR: {}: invalid argument",
-             format_source_location(source_location));
-    throw contract_violation{message};
+      const std::string message =
+          gformat("ERROR: {}: invalid argument",
+                  format_source_location(source_location));
+      throw contract_violation{message};
+    } else if constexpr (g_build_mode == BuildMode::Dev) {   // condition was met, but in Dev mode - send tracing event
+      std::shared_ptr<Record> record_passed =
+          get_event_record(source_location, EventCategory::Contract, Event::Argument, UUID());
+      record_passed->insert_or_assign("status"s, "Passed");
+      sink::g_sink_manager.write_record(record_passed);
+    }
   }
 }
 
@@ -88,21 +94,26 @@ void argument([[maybe_unused]] const bool condition,
 // the function's expectation of the state of other objects upon entry into the function
 // logs the error and throws exception
 void expect([[maybe_unused]] const bool condition,
-            [[maybe_unused]] const source_location& source_location =
-              source_location::current())
+            [[maybe_unused]] const source_location& source_location = source_location::current())
 {
-  if constexpr (!(g_build_mode == BuildMode::Dev || g_build_mode == BuildMode::Test || g_build_mode == BuildMode::Qa)) {
-    return;
-  } else if (!condition) [[unlikely]] {
-    std::shared_ptr<Record> record =
-        get_event_record(source_location, EventCategory::Contract, Event::Expect);
-    sink::g_sink_manager.write_record(record);
-    sink::g_sink_manager.flush();   // throw could terminate program
+  if constexpr (g_build_mode == BuildMode::Dev || g_build_mode == BuildMode::Test || g_build_mode == BuildMode::Qa) {
+    if (!condition) [[unlikely]] {
+      std::shared_ptr<Record> record_failed =
+          get_event_record(source_location, EventCategory::Contract, Event::Expect, UUID());
+      record_failed->insert_or_assign("status"s, "Failed");
+      sink::g_sink_manager.write_record(record_failed);
+      sink::g_sink_manager.flush();   // throw could terminate program
 
-    const std::string message =
-      gformat("ERROR: {}: expect condition failed",
-             format_source_location(source_location));
-    throw contract_violation{message};
+      const std::string message =
+          gformat("ERROR: {}: expect condition failed",
+                  format_source_location(source_location));
+      throw contract_violation{message};
+    } else if constexpr (g_build_mode == BuildMode::Dev) {   // condition was met, but in Dev mode - send tracing event
+      std::shared_ptr<Record> record_passed =
+          get_event_record(source_location, EventCategory::Contract, Event::Expect, UUID());
+      record_passed->insert_or_assign("status"s, "Passed");
+      sink::g_sink_manager.write_record(record_passed);
+    }
   }
 }
 
@@ -113,18 +124,24 @@ void confirm([[maybe_unused]] const bool condition,
              [[maybe_unused]] const source_location& source_location =
                source_location::current())
 {
-  if constexpr (!(g_build_mode == BuildMode::Dev || g_build_mode == BuildMode::Test || g_build_mode == BuildMode::Qa)) {
-    return;
-  } else if (!condition) [[unlikely]] {
-    std::shared_ptr<Record> record =
-        get_event_record(source_location, EventCategory::Contract, Event::Confirm);
-    sink::g_sink_manager.write_record(record);
-    sink::g_sink_manager.flush();   // throw could terminate program
+  if constexpr (g_build_mode == BuildMode::Dev || g_build_mode == BuildMode::Test || g_build_mode == BuildMode::Qa) {
+    if (!condition) [[unlikely]] {
+      std::shared_ptr<Record> record_failed =
+          get_event_record(source_location, EventCategory::Contract, Event::Confirm, UUID());
+      record_failed->insert_or_assign("status"s, "Failed");
+      sink::g_sink_manager.write_record(record_failed);
+      sink::g_sink_manager.flush();   // throw could terminate program
 
-    const std::string message =
-      gformat("ERROR: {}: confirm failed",
-             format_source_location(source_location));
-    throw contract_violation{message};
+      const std::string message =
+        gformat("ERROR: {}: confirm failed",
+               format_source_location(source_location));
+      throw contract_violation{message};
+    } else if constexpr (g_build_mode == BuildMode::Dev) {   // condition was met, but in Dev mode - send tracing event
+      std::shared_ptr<Record> record_passed =
+          get_event_record(source_location, EventCategory::Contract, Event::Confirm, UUID());
+      record_passed->insert_or_assign("status"s, "Passed");
+      sink::g_sink_manager.write_record(record_passed);
+    }
   }
 }
 
@@ -152,18 +169,24 @@ class Invariant final {
     _condition_function(std::move(condition_function)),
     _source_location(source_location)
   {
-    if constexpr (!(g_build_mode == BuildMode::Dev || g_build_mode == BuildMode::Test || g_build_mode == BuildMode::Qa)) {
-      return;
-    } else if (!_condition_function()) [[unlikely]] {
-      std::shared_ptr<Record> record =
-          get_event_record(source_location, EventCategory::Contract, Event::InvariantBegin);
-      sink::g_sink_manager.write_record(record);
-      sink::g_sink_manager.flush();   // throw could terminate program
+    if constexpr (g_build_mode == BuildMode::Dev || g_build_mode == BuildMode::Test || g_build_mode == BuildMode::Qa) {
+      if (!_condition_function()) [[unlikely]] {
+        std::shared_ptr<Record> record_failed =
+            get_event_record(source_location, EventCategory::Contract, Event::InvariantBegin, UUID());
+        record_failed->insert_or_assign("status"s, "Failed");
+        sink::g_sink_manager.write_record(record_failed);
+        sink::g_sink_manager.flush();   // throw could terminate program
 
-      const std::string message =
-        gformat("ERROR: {}: invariant failed on entry",
-               format_source_location(_source_location));
-      throw contract_violation{message};
+        const std::string message =
+            gformat("ERROR: {}: invariant failed on entry",
+                    format_source_location(_source_location));
+        throw contract_violation{message};
+      } else if constexpr (g_build_mode == BuildMode::Dev) {   // condition was met, but in Dev mode - send tracing event
+        std::shared_ptr<Record> record_passed =
+            get_event_record(source_location, EventCategory::Contract, Event::InvariantBegin, UUID());
+        record_passed->insert_or_assign("status"s, "Passed");
+        sink::g_sink_manager.write_record(record_passed);
+      }
     }
   }
 
@@ -171,25 +194,31 @@ class Invariant final {
   // https://en.cppreference.com/w/cpp/error/uncaught_exception
   // https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4152.pdf
   ~Invariant() {
-    if constexpr (!(g_build_mode == BuildMode::Dev || g_build_mode == BuildMode::Test || g_build_mode == BuildMode::Qa)) {
-      return;
-    } else if (!_condition_function()) [[unlikely]] {
-      try {
-        std::shared_ptr<Record> record =
-            get_event_record(_source_location, EventCategory::Contract, Event::InvariantEnd);
-        sink::g_sink_manager.write_record(record);
-        sink::g_sink_manager.flush();   // throw could terminate program
+    if constexpr (g_build_mode == BuildMode::Dev || g_build_mode == BuildMode::Test || g_build_mode == BuildMode::Qa) {
+      if (!_condition_function()) [[unlikely]] {
+        try {
+          std::shared_ptr<Record> record_failed =
+              get_event_record(_source_location, EventCategory::Contract, Event::InvariantEnd, UUID());
+          record_failed->insert_or_assign("status"s, "Failed");
+          sink::g_sink_manager.write_record(record_failed);
+          sink::g_sink_manager.flush();   // throw could terminate program
 
-        const std::string message =
-          gformat("ERROR: {}: invariant failed on exit",
-                 format_source_location(_source_location));
-        throw contract_violation{message};
-      } catch(...) {
-        if (std::uncaught_exceptions() == _uncaught_exceptions) {
-          throw;   // safe to rethrow
-        } else {
-          // unsafe to throw an exception - discard
+          const std::string message =
+              gformat("ERROR: {}: invariant failed on exit",
+                      format_source_location(_source_location));
+          throw contract_violation{message};
+        } catch (...) {
+          if (std::uncaught_exceptions() == _uncaught_exceptions) {
+            throw;   // safe to rethrow
+          } else {
+            // unsafe to throw an exception - discard
+          }
         }
+      } else if constexpr (g_build_mode == BuildMode::Dev) {   // condition was met, but in Dev mode - send tracing event
+        std::shared_ptr<Record> record_passed =
+            get_event_record(_source_location, EventCategory::Contract, Event::InvariantEnd, UUID());
+        record_passed->insert_or_assign("status"s, "Passed");
+        sink::g_sink_manager.write_record(record_passed);
       }
     }
   }
@@ -218,25 +247,31 @@ class Ensure final {
   // https://en.cppreference.com/w/cpp/error/uncaught_exception
   // https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4152.pdf
   ~Ensure() {
-    if constexpr (!(g_build_mode == BuildMode::Dev || g_build_mode == BuildMode::Test || g_build_mode == BuildMode::Qa)) {
-      return;
-    } else if (!_condition_function()) [[unlikely]] {
-      try {
-        std::shared_ptr<Record> record =
-            get_event_record(_source_location, EventCategory::Contract, Event::Ensure);
-        sink::g_sink_manager.write_record(record);
-        sink::g_sink_manager.flush();   // throw could terminate program
+    if constexpr (g_build_mode == BuildMode::Dev || g_build_mode == BuildMode::Test || g_build_mode == BuildMode::Qa) {
+      if (!_condition_function()) [[unlikely]] {
+        try {
+          std::shared_ptr<Record> record_failed =
+              get_event_record(_source_location, EventCategory::Contract, Event::Ensure, UUID());
+          record_failed->insert_or_assign("status"s, "Failed");
+          sink::g_sink_manager.write_record(record_failed);
+          sink::g_sink_manager.flush();   // throw could terminate program
 
-        const std::string message =
-          gformat("ERROR: {}: ensure condition failed on exit",
-                 format_source_location(_source_location));
-        throw contract_violation{message};
-      } catch(...) {
-        if (std::uncaught_exceptions() == _uncaught_exceptions) {
-          throw;   // safe to rethrow
-        } else {
-          // unsafe to throw an exception - discard
+          const std::string message =
+              gformat("ERROR: {}: ensure condition failed on exit",
+                      format_source_location(_source_location));
+          throw contract_violation{message};
+        } catch (...) {
+          if (std::uncaught_exceptions() == _uncaught_exceptions) {
+            throw;   // safe to rethrow
+          } else {
+            // unsafe to throw an exception - discard
+          }
         }
+      } else if constexpr (g_build_mode == BuildMode::Dev) {   // condition was met, but in Dev mode - send tracing event
+        std::shared_ptr<Record> record_passed =
+            get_event_record(_source_location, EventCategory::Contract, Event::Ensure, UUID());
+        record_passed->insert_or_assign("status"s, "Passed");
+        sink::g_sink_manager.write_record(record_passed);
       }
     }
   }
@@ -267,21 +302,26 @@ namespace giopler::prod
 // logs the error and throws exception
 // this contract check is always enabled when the library is enabled, even in production mode
 void certify([[maybe_unused]] const bool condition,
-             [[maybe_unused]] const source_location& source_location =
-               source_location::current())
+             [[maybe_unused]] const source_location& source_location = source_location::current())
 {
-  if constexpr (g_build_mode == BuildMode::Off) {
-    return;
-  } else if (!condition) [[unlikely]] {
-    std::shared_ptr<Record> record =
-        get_event_record(source_location, EventCategory::Contract, Event::Certify);
-    sink::g_sink_manager.write_record(record);
-    sink::g_sink_manager.flush();   // throw could terminate program
+  if constexpr (g_build_mode != BuildMode::Off) {
+    if (!condition) [[unlikely]] {
+      std::shared_ptr<Record> record_failed =
+          get_event_record(source_location, EventCategory::Contract, Event::Certify, UUID());
+          record_failed->insert_or_assign("status"s, "Failed");
+      sink::g_sink_manager.write_record(record_failed);
+      sink::g_sink_manager.flush();   // throw could terminate program
 
-    const std::string message =
-      gformat("ERROR: {}: certify failed",
-             format_source_location(source_location));
-    throw contract_violation{message};
+      const std::string message =
+          gformat("ERROR: {}: certify failed",
+                  format_source_location(source_location));
+      throw contract_violation{message};
+    } else if constexpr (g_build_mode == BuildMode::Dev) {   // condition was met, but in Dev mode - send tracing event
+      std::shared_ptr<Record> record_passed =
+          get_event_record(source_location, EventCategory::Contract, Event::Certify, UUID());
+      record_passed->insert_or_assign("status"s, "Passed");
+      sink::g_sink_manager.write_record(record_passed);
+    }
   }
 }
 
