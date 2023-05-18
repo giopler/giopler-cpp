@@ -54,17 +54,14 @@ int collatz(int number)
 }
 
 // -----------------------------------------------------------------------------
+// Note: As written, this program will send 398 events to the Giopler servers.
 int main()
 {
   giopler::dev::Function function;
 
   // number of steps to reach one from the index starting value
   const int steps[] = { 0,0, 1, 7, 2, 5, 8, 16, 3, 19,
-                        6, 14, 9, 9, 17, 17, 4, 12, 20,
-                        20, 7, 7, 15, 15, 10, 23, 10, 111,
-                        18, 18, 18, 106, 5, 26, 13, 13, 21,
-                        21, 21, 34, 8, 109, 8, 29, 16, 16,
-                        16, 104, 11, 24, 24 };
+                        6, 14, 9, 9, 17, 17, 4, 12, 20 };
   constexpr int total_steps = sizeof(steps) / sizeof(int);
 
   for (int n = 1; n < total_steps; ++n) {

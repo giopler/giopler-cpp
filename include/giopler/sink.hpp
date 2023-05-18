@@ -100,7 +100,10 @@ class SinkManager final {
     {
       const std::lock_guard<std::mutex> lock{_mutex};
       if (!_workers.empty()) {
-        std::cout << "Sending remaining events to Giopler..." << std::endl;
+        const std::size_t event_count = std::distance(_workers.begin(), _workers.end());
+        if (event_count >= 10) {
+          std::cout << "Sending remaining " << event_count << " events to Giopler..." << std::endl;
+        }
       }
       wait_workers();
     }

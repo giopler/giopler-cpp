@@ -35,13 +35,14 @@ uint64_t ackermann(const uint64_t m, const uint64_t n) {
 }
 
 // -----------------------------------------------------------------------------
+// Note: As written, this program will send 241 events to the Giopler servers.
 int main()
 {
-  giopler::dev::confirm(ackermann(0, 1) == 2);
-  giopler::dev::confirm(ackermann(2, 0) == ackermann(1, 1));
-  giopler::dev::confirm(ackermann(4, 0) == 13);
-  giopler::dev::confirm(ackermann(3, 4) == 125);
-  giopler::dev::confirm(ackermann(4, 1) == 65533);
+  giopler::dev::confirm(ackermann(0, 1) == 2);  // 7 events through here
+  giopler::dev::confirm(ackermann(2, 0) == ackermann(1, 1));  // 26 events through here
+  giopler::dev::confirm(ackermann(4, 0) == 13);  // 241 events through here
+  //giopler::dev::confirm(ackermann(3, 4) == 125);  // 20856 events through here
+  //giopler::dev::confirm(ackermann(4, 1) == 65533);
 
   return EXIT_SUCCESS;
 }

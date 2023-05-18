@@ -21,8 +21,6 @@
 // ON AN "AS IS" BASIS, AND THE COPYRIGHT HOLDER HAS NO OBLIGATION TO
 // PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 
-// #include "brainyguy/bglogger.h"
-
 // -------------------------------------------------------------------
 // g++  -Ofast -march=native
 //      -Wa,-adhln=matrices.s -g -fverbose-asm -masm=intel
@@ -35,7 +33,7 @@
 // -------------------------------------------------------------------
 // https://gcc.gnu.org/onlinedocs/gcc/Other-Builtins.html
 // __OPTIMIZE__ = use functions instead of macros to define the intrinsics
-#define  __OPTIMIZE__
+//#define  __OPTIMIZE__
 #include <xmmintrin.h>   // intrinsics
 
 #include <malloc.h>      // memalign()
@@ -52,6 +50,8 @@
 #include <ostream>
 #include <random>
 #include <string>
+
+#include "giopler/giopler.hpp"
 
 // -------------------------------------------------------------------
 constexpr int MATRIX_DIM = 1024 * 8;   // can do up to 8
@@ -139,6 +139,7 @@ alg01(double *A,
       const int x1y2,
       const int x2)
 {
+  giopler::dev::Function function;
   std::fill(C, &C[y1*x2], 0.0);
 
   for (int i = 0; i < y1; ++i) {
@@ -161,6 +162,7 @@ alg02(double *A,
       const int x1y2,
       const int x2)
 {
+  giopler::dev::Function function;
   std::fill(C, &C[y1*x2], 0.0);
 
   for (int i = 0; i < y1; ++i) {
@@ -185,6 +187,7 @@ alg03(double *__restrict__ A,
       const int x1y2,
       const int x2)
 {
+  giopler::dev::Function function;
   std::fill(C, &C[y1*x2], 0.0);
 
   for (int i = 0; i < y1; ++i) {
@@ -208,6 +211,7 @@ alg04(double *__restrict__ A,
       const int x1y2,
       const int x2)
 {
+  giopler::dev::Function function;
   double*__restrict__ work =
     static_cast<double*>(__builtin_assume_aligned(memalign(CACHE_LINE_SIZE, x1y2*sizeof(double)),
                                CACHE_LINE_SIZE));
@@ -243,6 +247,7 @@ alg05(double *__restrict__ A,
       const int x1y2,
       const int x2)
 {
+  giopler::dev::Function function;
   std::fill(C, &C[y1*x2], 0.0);
 
   for (int jj=0; jj<x2; jj += CACHE_LINE_DOUBLES)
@@ -270,6 +275,7 @@ alg06(double *__restrict__ A,
       const int x1y2,
       const int x2)
 {
+  giopler::dev::Function function;
   for (int jj=0; jj<x2; jj+=CACHE_LINE_DOUBLES) {
     for (int i=0; i<y1; i++)
       for (int j=jj; j < std::min(jj+CACHE_LINE_DOUBLES,x2); j++)
@@ -299,6 +305,7 @@ alg07(double *__restrict__ A,
       const int x1y2,
       const int x2)
 {
+  giopler::dev::Function function;
   int i, j, k, i2, j2, k2;
   double* rres;
   double* rmul1;
@@ -313,7 +320,7 @@ alg07(double *__restrict__ A,
          i2 < CACHE_LINE_DOUBLES;
          ++i2, rres += y1, rmul1 += y1)
       {
-        _mm_prefetch(&rmul1[8], _MM_HINT_NTA);
+        _mm_prefetch(&rmul1[8], _MM_HINT_NTA);   // CLion incorrectly marks this as an error
 
         for (k2 = 0, rmul2 = &B[k*x1y2+j]; k2 < CACHE_LINE_DOUBLES; ++k2, rmul2 += x1y2)
           {
@@ -342,6 +349,7 @@ alg08(double *__restrict__ A,
       const int x1y2,
       const int x2)
 {
+  giopler::dev::Function function;
   const double *__restrict__ AA = static_cast<double*>(__builtin_assume_aligned(A, CACHE_LINE_SIZE));
   const double *__restrict__ BB = static_cast<double*>(__builtin_assume_aligned(B, CACHE_LINE_SIZE));
         double *__restrict__ CC = static_cast<double*>(__builtin_assume_aligned(C, CACHE_LINE_SIZE));
@@ -363,6 +371,7 @@ alg09(double *__restrict__ A,
       const int x1y2,
       const int x2)
 {
+  giopler::dev::Function function;
   const double *__restrict__ AA = static_cast<double*>(__builtin_assume_aligned(A, CACHE_LINE_SIZE));
   const double *__restrict__ BB = static_cast<double*>(__builtin_assume_aligned(B, CACHE_LINE_SIZE));
         double *__restrict__ CC = static_cast<double*>(__builtin_assume_aligned(C, CACHE_LINE_SIZE));
@@ -397,6 +406,7 @@ alg10(double *__restrict__ A,
       const int x1y2,
       const int x2)
 {
+  giopler::dev::Function function;
   for (int i = 0; i < y1; ++i) {
     for (int j = 0; j < x2; ++j)
       C[i*x2+j] = A[i*x1y2+0] * B[0*x2+j];   // k == 0
@@ -526,6 +536,7 @@ int main() {
       std::cout << std::endl;
     }
 
+  free(T);
   free(C);
   free(B);
   free(A);

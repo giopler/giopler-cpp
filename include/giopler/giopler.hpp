@@ -18,6 +18,18 @@
 
 // -----------------------------------------------------------------------------
 #include "giopler/config.hpp"
+
+// -----------------------------------------------------------------------------
+// compiling in Release mode, we have lots of unused variables
+#if defined(GIOPLER_COMPILER_GCC)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-variable"
+#elif defined(GIOPLER_COMPILER_CLANG)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-variable"
+#endif
+
+// -----------------------------------------------------------------------------
 #include "giopler/platform.hpp"
 #include "giopler/utility.hpp"
 #include "giopler/record.hpp"
@@ -30,6 +42,14 @@
 
 #include "giopler/counter.hpp"
 #include "giopler/profile.hpp"
+
+// -----------------------------------------------------------------------------
+// restore diagnostic settings
+#if defined(GIOPLER_COMPILER_GCC)
+#pragma GCC diagnostic pop
+#elif defined(GIOPLER_COMPILER_CLANG)
+#pragma clang diagnostic pop
+#endif
 
 // -----------------------------------------------------------------------------
 #endif // defined GIOPLER_GIOPLER_HPP
