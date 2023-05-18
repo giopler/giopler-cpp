@@ -84,12 +84,14 @@ class SinkManager final {
 
   /// Write the record to the sink.
   // Sink objects run in their own thread.
+  // using default of std::launch::async|std::launch::deferred
+  // Gcc appears to try async first, which is what we want.
   void write_record(std::shared_ptr<Record> record) {
     std::call_once(_create_sinks_once_flag, create_sinks);
     const std::lock_guard<std::mutex> lock{_mutex};
     check_workers();   // check before adding to avoid checking newly added workers
     for (auto&& sink : _sinks) {
-      _workers.emplace_front(std::async(std::launch::async, [&sink, record]{return sink->write_record(record);}));
+      _workers.emplace_front(std::async([&sink, record]{return sink->write_record(record);}));
     }
   }
 

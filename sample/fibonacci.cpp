@@ -34,12 +34,13 @@ int fibonacci(int n)
 }
 
 // -----------------------------------------------------------------------------
+// Note: As written, this program will send 362 events to the Giopler servers.
 int main()
 {
   giopler::dev::confirm(fibonacci( 1) ==    1);
-  giopler::dev::confirm(fibonacci(10) ==   55);
-  giopler::dev::confirm(fibonacci(13) ==  233);
-  giopler::dev::confirm(fibonacci(19) == 4181);
+  giopler::dev::confirm(fibonacci(10) ==   55);   // 362 events up to here
+  //giopler::dev::confirm(fibonacci(13) ==  233);   // 1869 events up to here
+  //giopler::dev::confirm(fibonacci(19) == 4181);   // 28928 events up to here
 
   return EXIT_SUCCESS;
 }

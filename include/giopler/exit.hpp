@@ -34,6 +34,8 @@ namespace giopler
 // https://en.cppreference.com/w/cpp/utility/program/signal
 
 // -----------------------------------------------------------------------------
+/// flushes the event cache if abnormal program termination
+// this is problematic - the sink manager mutex could be called recursively
 class ExitFunction {
  public:
   ExitFunction() {
@@ -74,7 +76,8 @@ class ExitFunction {
 };
 
 // -----------------------------------------------------------------------------
-static inline ExitFunction g_exit_function;
+// probably better to disable this - see comment above
+//static inline ExitFunction g_exit_function;
 
 // -----------------------------------------------------------------------------
 }   // namespace giopler

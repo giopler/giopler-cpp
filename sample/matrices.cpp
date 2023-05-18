@@ -33,8 +33,11 @@
 // sudo cpupower frequency-set -u 3GHz
 
 // -------------------------------------------------------------------
+// https://gcc.gnu.org/onlinedocs/gcc/Other-Builtins.html
+// __OPTIMIZE__ = use functions instead of macros to define the intrinsics
+#define  __OPTIMIZE__
+#include <xmmintrin.h>   // intrinsics
 
-#include <emmintrin.h>   // intrinsics
 #include <malloc.h>      // memalign()
 #include <math.h>
 #include <sched.h>       // sched_setaffinity()

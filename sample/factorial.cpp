@@ -31,6 +31,7 @@ uint64_t factorial(uint64_t n) {
 }
 
 // -----------------------------------------------------------------------------
+// Note: As written, this program will send 49 events to the Giopler servers.
 int main()
 {
   giopler::dev::confirm(factorial( 0) == 1);

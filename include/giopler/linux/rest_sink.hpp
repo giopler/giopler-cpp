@@ -84,7 +84,7 @@ class Rest : public Sink
 
     _json_web_token         = std::getenv("GIOPLER_TOKEN");
 
-    printf("Host: %s:%s\nToken: %s\n\n", _server_host.c_str(), _server_port.c_str(), _json_web_token.c_str());
+    printf("Giopler Host: %s:%s\n", _server_host.c_str(), _server_port.c_str());
 
     if (!_is_localhost)   open_connection();
   }
