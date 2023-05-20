@@ -33,18 +33,15 @@
 // -------------------------------------------------------------------
 // https://gcc.gnu.org/onlinedocs/gcc/Other-Builtins.html
 // __OPTIMIZE__ = use functions instead of macros to define the intrinsics
-//#define  __OPTIMIZE__
 #include <xmmintrin.h>   // intrinsics
 
 #include <malloc.h>      // memalign()
-#include <math.h>
 #include <sched.h>       // sched_setaffinity()
 #include <stdlib.h>      // exit()
 #include <unistd.h>      // getpid()
 
 #include <algorithm>
 #include <chrono>
-#include <cstdint>
 #include <iomanip>
 #include <iostream>
 #include <ostream>
@@ -54,15 +51,15 @@
 #include "giopler/giopler.hpp"
 
 // -------------------------------------------------------------------
-constexpr int MATRIX_DIM = 1024 * 8;   // can do up to 8
-constexpr int CACHE_LINE_SIZE = 64;
-constexpr int CACHE_LINE_DOUBLES = CACHE_LINE_SIZE / sizeof( double );
-constexpr int MATRIX_ELEMENTS = MATRIX_DIM * MATRIX_DIM;
-constexpr int MATRIX_SIZE = MATRIX_ELEMENTS * sizeof(double);
+constexpr int MATRIX_DIM          = 1024 * 4;   // can do up to 8
+constexpr int CACHE_LINE_SIZE     = 64;
+constexpr int CACHE_LINE_DOUBLES  = CACHE_LINE_SIZE / sizeof( double );
+constexpr int MATRIX_ELEMENTS     = MATRIX_DIM * MATRIX_DIM;
+constexpr int MATRIX_SIZE         = MATRIX_ELEMENTS * sizeof(double);
 
-constexpr double CPU_FREQ = 3.0 * 1000000000.0;   // 3GHz
-constexpr double DOUBLE_RANGE = 1000000.0;
-constexpr double MIN_TIME_FUNC = 1.0;   // one second
+constexpr double CPU_FREQ         = 3.0 * 1000000000.0;   // 3GHz
+constexpr double DOUBLE_RANGE     = 1000000.0;
+constexpr double MIN_TIME_FUNC    = 1.0;   // one second
 
 // -------------------------------------------------------------------
 void pinThread()
@@ -97,7 +94,7 @@ double funcTime(F func, Args&&... args)
 // STL binary predicate
 // Are two doubles are approximately equal?
 // Knuth, Art of Computer Prog II, 1969, section 4.2.2 pages 217-218
-bool approxEqual(const double x, const double y)
+constexpr bool approxEqual(const double x, const double y)
 {
   return std::abs(x - y) <= 1e-5 * std::abs(x);
 }
@@ -120,7 +117,7 @@ std::string humanNumber(int size)
 
 // -------------------------------------------------------------------
 // convert time in seconds into CPU cycles (3.9GHz)
-double cycles(const double dim, const double secs)
+constexpr double cycles(const double dim, const double secs)
 {
     const double cycles = secs * CPU_FREQ;
     const double mults  = dim * dim * dim;
@@ -139,7 +136,7 @@ alg01(double *A,
       const int x1y2,
       const int x2)
 {
-  giopler::dev::Function function;
+  giopler::dev::Function function(static_cast<double>(y1)*x1y2*x2);   // O(n^3)
   std::fill(C, &C[y1*x2], 0.0);
 
   for (int i = 0; i < y1; ++i) {
@@ -162,13 +159,13 @@ alg02(double *A,
       const int x1y2,
       const int x2)
 {
-  giopler::dev::Function function;
+  giopler::dev::Function function(static_cast<double>(y1)*x1y2*x2);   // O(n^3)
   std::fill(C, &C[y1*x2], 0.0);
 
   for (int i = 0; i < y1; ++i) {
     for (int k = 0; k < x1y2; ++k) {
       for (int j = 0; j < x2; ++j) {
-    C[i*x1y2+j] += A[i*x1y2+k] * B[k*x1y2+j];
+        C[i*x1y2+j] += A[i*x1y2+k] * B[k*x1y2+j];
       }
     }
   }
@@ -187,7 +184,7 @@ alg03(double *__restrict__ A,
       const int x1y2,
       const int x2)
 {
-  giopler::dev::Function function;
+  giopler::dev::Function function(static_cast<double>(y1)*x1y2*x2);   // O(n^3)
   std::fill(C, &C[y1*x2], 0.0);
 
   for (int i = 0; i < y1; ++i) {
@@ -211,7 +208,7 @@ alg04(double *__restrict__ A,
       const int x1y2,
       const int x2)
 {
-  giopler::dev::Function function;
+  giopler::dev::Function function(static_cast<double>(y1)*x1y2*x2);   // O(n^3)
   double*__restrict__ work =
     static_cast<double*>(__builtin_assume_aligned(memalign(CACHE_LINE_SIZE, x1y2*sizeof(double)),
                                CACHE_LINE_SIZE));
@@ -247,7 +244,7 @@ alg05(double *__restrict__ A,
       const int x1y2,
       const int x2)
 {
-  giopler::dev::Function function;
+  giopler::dev::Function function(static_cast<double>(y1)*x1y2*x2);   // O(n^3)
   std::fill(C, &C[y1*x2], 0.0);
 
   for (int jj=0; jj<x2; jj += CACHE_LINE_DOUBLES)
@@ -275,7 +272,7 @@ alg06(double *__restrict__ A,
       const int x1y2,
       const int x2)
 {
-  giopler::dev::Function function;
+  giopler::dev::Function function(static_cast<double>(y1)*x1y2*x2);   // O(n^3)
   for (int jj=0; jj<x2; jj+=CACHE_LINE_DOUBLES) {
     for (int i=0; i<y1; i++)
       for (int j=jj; j < std::min(jj+CACHE_LINE_DOUBLES,x2); j++)
@@ -305,7 +302,7 @@ alg07(double *__restrict__ A,
       const int x1y2,
       const int x2)
 {
-  giopler::dev::Function function;
+  giopler::dev::Function function(static_cast<double>(y1)*x1y2*x2);   // O(n^3)
   int i, j, k, i2, j2, k2;
   double* rres;
   double* rmul1;
@@ -349,7 +346,7 @@ alg08(double *__restrict__ A,
       const int x1y2,
       const int x2)
 {
-  giopler::dev::Function function;
+  giopler::dev::Function function(static_cast<double>(y1)*x1y2*x2);   // O(n^3)
   const double *__restrict__ AA = static_cast<double*>(__builtin_assume_aligned(A, CACHE_LINE_SIZE));
   const double *__restrict__ BB = static_cast<double*>(__builtin_assume_aligned(B, CACHE_LINE_SIZE));
         double *__restrict__ CC = static_cast<double*>(__builtin_assume_aligned(C, CACHE_LINE_SIZE));
@@ -371,7 +368,7 @@ alg09(double *__restrict__ A,
       const int x1y2,
       const int x2)
 {
-  giopler::dev::Function function;
+  giopler::dev::Function function(static_cast<double>(y1)*x1y2*x2);   // O(n^3)
   const double *__restrict__ AA = static_cast<double*>(__builtin_assume_aligned(A, CACHE_LINE_SIZE));
   const double *__restrict__ BB = static_cast<double*>(__builtin_assume_aligned(B, CACHE_LINE_SIZE));
         double *__restrict__ CC = static_cast<double*>(__builtin_assume_aligned(C, CACHE_LINE_SIZE));
@@ -406,7 +403,7 @@ alg10(double *__restrict__ A,
       const int x1y2,
       const int x2)
 {
-  giopler::dev::Function function;
+  giopler::dev::Function function(static_cast<double>(y1)*x1y2*x2);   // O(n^3)
   for (int i = 0; i < y1; ++i) {
     for (int j = 0; j < x2; ++j)
       C[i*x2+j] = A[i*x1y2+0] * B[0*x2+j];   // k == 0
@@ -456,7 +453,7 @@ int main() {
         << std::setw(8) << "10"
         << std::endl;
 
-  for (int array_dim = CACHE_LINE_DOUBLES;
+  for (int array_dim = MATRIX_DIM;        // minimum is CACHE_LINE_DOUBLES
        array_dim <= MATRIX_DIM;
        array_dim *= 2)
     {

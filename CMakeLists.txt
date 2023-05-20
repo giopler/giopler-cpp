@@ -121,6 +121,7 @@ target_link_libraries(matrices PRIVATE giopler m)
 # ------------------------------------------------------------------------------
 #add_compile_definitions(PRIVATE GIOPLER_BUILD_MODE_DEV=1)
 add_compile_definitions(PRIVATE GIOPLER_BUILD_MODE_PROF=1)
+#add_compile_definitions(PRIVATE GIOPLER_BUILD_MODE_PROD=1)
 
 # ------------------------------------------------------------------------------
 if(BUILD_TESTING)
