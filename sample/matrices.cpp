@@ -51,7 +51,7 @@
 #include "giopler/giopler.hpp"
 
 // -------------------------------------------------------------------
-constexpr int MATRIX_DIM          = 1024 * 4;   // can do up to 8
+constexpr int MATRIX_DIM          = 1024 * 2;   // can do up to 8
 constexpr int CACHE_LINE_SIZE     = 64;
 constexpr int CACHE_LINE_DOUBLES  = CACHE_LINE_SIZE / sizeof( double );
 constexpr int MATRIX_ELEMENTS     = MATRIX_DIM * MATRIX_DIM;
@@ -416,6 +416,7 @@ alg10(double *__restrict__ A,
 
 // -------------------------------------------------------------------
 // -------------------------------------------------------------------
+// Note: As written, this program will send 24 events to the Giopler servers.
 int main() {
   pinThread();
 
