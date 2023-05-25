@@ -25,7 +25,7 @@
 #include <iostream>
 #include <cstdlib>
 
-// -----------------------------------------------------------------------------
+// ----------------------------------------------------
 void hello(int hellos)
 {
   giopler::dev::Function function(hellos);
@@ -35,7 +35,7 @@ void hello(int hellos)
   if (--hellos)   hello(hellos);
 }
 
-// -----------------------------------------------------------------------------
+// ----------------------------------------------------
 // This program sends 15 events to the Giopler servers.
 int main()
 {
