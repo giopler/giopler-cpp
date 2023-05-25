@@ -36,7 +36,7 @@ void hello(int hellos)
 }
 
 // -----------------------------------------------------------------------------
-// Note: As written, this program will send 15 events to the Giopler servers.
+// This program will send 15 events to the Giopler servers.
 int main()
 {
   giopler::dev::Function function;
