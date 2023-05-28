@@ -102,7 +102,7 @@ class Profile final
 {
  public:
   explicit Profile() {
-    const Timestamp start_time = now();
+    const TimestampSteady start_time = now_steady();
     _event_counters_start = std::make_shared<Record>(read_event_counters());
     _event_counters_start->insert({{"dur"s, to_seconds(start_time) }});
     _event_counters_children = std::make_shared<Record>();
@@ -140,7 +140,7 @@ class Profile final
     if (_frozen)   return;
     _frozen = true;
 
-    const Timestamp end_time = now();
+    const TimestampSteady end_time = now_steady();
     event_counters_total = std::make_shared<Record>(read_event_counters());
     event_counters_total->insert({{"dur"s, to_seconds(end_time) }});
     subtract_number_record(*event_counters_total, *_event_counters_start);

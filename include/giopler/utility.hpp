@@ -177,20 +177,38 @@ get_output_filepath(const std::string_view directory = "<temp>"sv, const std::st
 }
 
 // -----------------------------------------------------------------------------
-using Timestamp = std::chrono::system_clock::time_point;
+// we need to use system_clock for reporting the start time
+// we need to use steady_clock for reporting time deltas
+using TimestampSystem = std::chrono::system_clock::time_point;
+using TimestampSteady = std::chrono::steady_clock::time_point;
 
 // -----------------------------------------------------------------------------
 /// returns the current timestamp
-Timestamp now() {
+TimestampSystem now_system() {
   return std::chrono::system_clock::now();
 }
 
 // -----------------------------------------------------------------------------
-static inline const Timestamp start_time = now();
+/// returns the current timestamp
+TimestampSteady now_steady() {
+  return std::chrono::steady_clock::now();
+}
+
+// -----------------------------------------------------------------------------
+static inline const TimestampSystem start_system_time = std::chrono::system_clock::now();
+static inline const TimestampSteady start_steady_time = std::chrono::steady_clock::now();
 
 // -----------------------------------------------------------------------------
 /// convert the given Timestamp into nanoseconds
-constexpr std::uint64_t to_nanoseconds(const Timestamp ts) {
+constexpr std::uint64_t to_nanoseconds(const TimestampSystem ts) {
+  const std::uint64_t timestamp_ns =
+    std::chrono::duration_cast<std::chrono::nanoseconds>(ts.time_since_epoch()).count();
+  return timestamp_ns;
+}
+
+// -----------------------------------------------------------------------------
+/// convert the given Timestamp into nanoseconds
+constexpr std::uint64_t to_nanoseconds(const TimestampSteady ts) {
   const std::uint64_t timestamp_ns =
     std::chrono::duration_cast<std::chrono::nanoseconds>(ts.time_since_epoch()).count();
   return timestamp_ns;
@@ -205,13 +223,13 @@ constexpr double ns_to_sec(const std::uint64_t ns) {
 
 // -----------------------------------------------------------------------------
 /// convert the given Timestamp into seconds
-constexpr double to_seconds(const Timestamp ts) {
+constexpr double to_seconds(const TimestampSteady ts) {
   return ns_to_sec(to_nanoseconds(ts));
 }
 
 // -----------------------------------------------------------------------------
 /// return seconds in double between the two timestamps
-constexpr double timestamp_diff(const Timestamp start, const Timestamp end) {
+constexpr double timestamp_diff(const TimestampSteady start, const TimestampSteady end) {
   const std::uint64_t timestamp_start_ns = to_nanoseconds(start);
   const std::uint64_t timestamp_end_ns   = to_nanoseconds(end);
   const std::uint64_t delta_ns           = timestamp_end_ns - timestamp_start_ns;
@@ -221,7 +239,7 @@ constexpr double timestamp_diff(const Timestamp start, const Timestamp end) {
 // -----------------------------------------------------------------------------
 /// returns seconds since the program started running
 double get_time_delta() {
-  return timestamp_diff(start_time, now());
+  return timestamp_diff(start_steady_time, now_steady());
 }
 
 // -----------------------------------------------------------------------------
@@ -233,7 +251,7 @@ double get_time_delta() {
 // https://en.cppreference.com/w/cpp/chrono/utc_clock/formatter
 // Note: C++20 utc_clock is not quite implemented yet for gcc.
 // Parameter example: const auto start = std::chrono::system_clock::now();
-std::string format_timestamp(const Timestamp ts)
+std::string format_timestamp(const TimestampSystem ts)
 {
   // support for %Ez was merged into libfmt on December 10, 2022
   // https://github.com/fmtlib/fmt/issues/3220
@@ -408,8 +426,8 @@ concept StringFunction = requires (F f) {
 
 // -----------------------------------------------------------------------------
 template<>
-struct std::hash<giopler::Timestamp> {
-  std::size_t operator()(const giopler::Timestamp& timestamp) const {
+struct std::hash<giopler::TimestampSystem> {
+  std::size_t operator()(const giopler::TimestampSystem& timestamp) const {
     std::hash<std::uint64_t> hash;
     const std::uint64_t timestamp_ns = giopler::to_nanoseconds(timestamp);
     return hash(timestamp_ns);

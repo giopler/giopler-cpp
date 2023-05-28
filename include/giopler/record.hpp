@@ -265,15 +265,15 @@ class RecordValue
   }
 
   // ---------------------------------------------------------------------------
-  RecordValue(Timestamp timestamp_value)   // NOLINT(google-explicit-constructor)
+  RecordValue(TimestampSystem timestamp_value)   // NOLINT(google-explicit-constructor)
   : _record_value_type(Type::Timestamp), _timestamp_value(timestamp_value) { }
 
-  [[nodiscard]] Timestamp get_timestamp() const {
+  [[nodiscard]] TimestampSystem get_timestamp() const {
     assert(_record_value_type == Type::Timestamp);
     return _timestamp_value;
   }
 
-  void set_timestamp(const Timestamp timestamp_value) {
+  void set_timestamp(const TimestampSystem timestamp_value) {
     assert(_record_value_type == Type::Timestamp);
     _timestamp_value = timestamp_value;
   }
@@ -314,7 +314,7 @@ class RecordValue
   int64_t _integer_value{};
   double _real_value{};
   std::string _string_value{};
-  Timestamp _timestamp_value{};
+  TimestampSystem _timestamp_value{};
   std::shared_ptr<giopler::Record> _record_value;
   std::shared_ptr<giopler::Array>  _array_value;
 };
@@ -597,7 +597,7 @@ namespace giopler {
 // these values are constant per program run
 std::shared_ptr<Record> get_program_record() {
   return std::make_shared<Record>(Record{
-      {"start"s,            start_time},
+      {"start"s,            start_system_time},
       {"pgm"s,              get_program_name()},
       {"build"s,            get_build_mode_name()},
 
