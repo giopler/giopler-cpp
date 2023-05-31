@@ -35,6 +35,7 @@ void warning([[maybe_unused]] const std::string_view message = ""sv,
     std::shared_ptr<Record> record_log =
         get_event_record(source_location, EventCategory::Log, Event::Warning, UUID());
     record_log->insert_or_assign("msg"s, message);
+    record_log->insert_or_assign("status"s, "Failed");
     sink::g_sink_manager.write_record(record_log);
   }
 }
@@ -48,6 +49,7 @@ void warning([[maybe_unused]] StringFunction auto message_function,
     std::shared_ptr<Record> record_log =
         get_event_record(source_location, EventCategory::Log, Event::Warning, UUID());
     record_log->insert_or_assign("msg"s, message_function());
+    record_log->insert_or_assign("status"s, "Failed");
     sink::g_sink_manager.write_record(record_log);
   }
 }
@@ -68,7 +70,9 @@ void error([[maybe_unused]] const std::string_view message = ""sv,
     std::shared_ptr<Record> record_log =
         get_event_record(source_location, EventCategory::Log, Event::Error, UUID());
     record_log->insert_or_assign("msg"s, message);
+    record_log->insert_or_assign("status"s, "Failed");
     sink::g_sink_manager.write_record(record_log);
+    sink::g_sink_manager.flush();   // user's code could throw and terminate program
   }
 }
 
@@ -81,7 +85,9 @@ void error([[maybe_unused]] StringFunction auto message_function,
     std::shared_ptr<Record> record_log =
         get_event_record(source_location, EventCategory::Log, Event::Error, UUID());
     record_log->insert_or_assign("msg"s, message_function());
+    record_log->insert_or_assign("status"s, "Failed");
     sink::g_sink_manager.write_record(record_log);
+    sink::g_sink_manager.flush();   // user's code could throw and terminate program
   }
 }
 

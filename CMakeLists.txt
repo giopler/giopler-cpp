@@ -128,10 +128,10 @@ target_link_libraries(funnel_sort PRIVATE giopler m)
 # the compiler build (Debug, Release, etc) should also be changed in lock-step
 # For example, use Debug for GIOPLER_BUILD_MODE_DEV
 #add_compile_definitions(PRIVATE GIOPLER_BUILD_MODE_OFF=1)
-#add_compile_definitions(PRIVATE GIOPLER_BUILD_MODE_DEV=1)
+add_compile_definitions(PRIVATE GIOPLER_BUILD_MODE_DEV=1)
 #add_compile_definitions(PRIVATE GIOPLER_BUILD_MODE_TEST=1)
 #add_compile_definitions(PRIVATE GIOPLER_BUILD_MODE_BENCH=1)
-add_compile_definitions(PRIVATE GIOPLER_BUILD_MODE_QA=1)
+#add_compile_definitions(PRIVATE GIOPLER_BUILD_MODE_QA=1)
 #add_compile_definitions(PRIVATE GIOPLER_BUILD_MODE_PROF=1)
 #add_compile_definitions(PRIVATE GIOPLER_BUILD_MODE_PROD=1)
 

@@ -466,7 +466,7 @@ int64_t get_thread_sequence() {
 
 
 // -----------------------------------------------------------------------------
-namespace giopler::dev {
+namespace giopler::prod {
 
 // -----------------------------------------------------------------------------
 /// set a thread-local id value
@@ -587,7 +587,7 @@ private:
 };
 
 // -----------------------------------------------------------------------------
-}   // namespace giopler::dev
+}   // namespace giopler::prod
 
 // -----------------------------------------------------------------------------
 namespace giopler {
@@ -641,8 +641,8 @@ std::shared_ptr<Record> get_event_record(const source_location& source_location,
       {"cpu_id"s,             get_cpu_id()},
       {"avail_mem"s,          get_available_memory()},
 
-      {"clss"s,               giopler::dev::Class::get_class()},
-      {"id"s,                 giopler::dev::Id::get_id()},
+      {"clss"s,               giopler::prod::Class::get_class()},
+      {"id"s,                 giopler::prod::Id::get_id()},
 
       // These are all optional. They are set by the event generator if needed using insert_or_assign().
       {"other_id"s,           UUID::get_nil().get_string()},

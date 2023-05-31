@@ -28,6 +28,7 @@
 // ----------------------------------------------------
 void hello(int hellos)
 {
+  giopler::prod::Class clss("hellos");
   giopler::dev::Function function(hellos);
   giopler::dev::confirm(hellos);
   std::cout << "Hello, world!" << std::endl;
