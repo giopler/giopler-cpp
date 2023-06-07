@@ -46,12 +46,16 @@ message(ERROR OpenSSL library is required.)
 endif()
 
 # ------------------------------------------------------------------------------
+# https://cmake.org/cmake/help/latest/module/FindZLIB.html
+find_package(ZLIB REQUIRED)
+if(NOT ZLIB_FOUND)
+message(ERROR zLib compression library is required.)
+endif()
+
+# ------------------------------------------------------------------------------
 # cmake/FindBrotli.cmake
 # https://github.com/google/brotli/
-find_package(Brotli REQUIRED)
-if(NOT BROTLI_FOUND)
-message(ERROR Brotli compression library is required.)
-endif()
+#find_package(Brotli REQUIRED)
 
 # ------------------------------------------------------------------------------
 # ------------------------------------------------------------------------------
@@ -63,14 +67,14 @@ endif()
 add_library(giopler INTERFACE)
 target_include_directories(giopler INTERFACE
         ${OPENSSL_INCLUDE_DIR}
-        ${BROTLI_INCLUDE_DIRS}
+        ${ZLIB_INCLUDE_DIRS}
         $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 target_link_libraries(giopler INTERFACE
         Threads::Threads
         ${OPENSSL_LIBRARIES}
-        ${BROTLI_LIBRARIES}
+        ${ZLIB_LIBRARIES}
 )
 
 # ------------------------------------------------------------------------------
@@ -124,15 +128,20 @@ target_compile_options(funnel_sort PRIVATE -Werror -Wall)
 target_link_libraries(funnel_sort PRIVATE giopler m)
 
 # ------------------------------------------------------------------------------
+add_executable(benchmark "${CMAKE_CURRENT_SOURCE_DIR}/sample/benchmark.cpp")
+target_compile_options(benchmark PRIVATE -Werror -Wall)
+target_link_libraries(benchmark PRIVATE giopler m)
+
+# ------------------------------------------------------------------------------
 # only one of these can be defined at a time
 # the compiler build (Debug, Release, etc) should also be changed in lock-step
 # For example, use Debug for GIOPLER_BUILD_MODE_DEV
 #add_compile_definitions(PRIVATE GIOPLER_BUILD_MODE_OFF=1)
-add_compile_definitions(PRIVATE GIOPLER_BUILD_MODE_DEV=1)
+#add_compile_definitions(PRIVATE GIOPLER_BUILD_MODE_DEV=1)
 #add_compile_definitions(PRIVATE GIOPLER_BUILD_MODE_TEST=1)
 #add_compile_definitions(PRIVATE GIOPLER_BUILD_MODE_BENCH=1)
 #add_compile_definitions(PRIVATE GIOPLER_BUILD_MODE_QA=1)
-#add_compile_definitions(PRIVATE GIOPLER_BUILD_MODE_PROF=1)
+add_compile_definitions(PRIVATE GIOPLER_BUILD_MODE_PROF=1)
 #add_compile_definitions(PRIVATE GIOPLER_BUILD_MODE_PROD=1)
 
 # ------------------------------------------------------------------------------

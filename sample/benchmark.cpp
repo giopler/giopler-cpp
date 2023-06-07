@@ -214,7 +214,6 @@ class default_sort {
 
 template <class RandomIt>
 vector<typename RandomIt::value_type> funnelsort(RandomIt first, RandomIt last) {
-    giopler::dev::Function function;
 	return funnelsort(first, last, default_sort<RandomIt>());
 	//return funnelsort(first, last, std::greater<typename RandomIt::value_type>());
 }
@@ -224,6 +223,7 @@ vector<T> merge(const vector<vector<T>>& lists, Comp comp);
 
 template <class RandomIt, class Comp>
 vector<typename RandomIt::value_type> funnelsort(RandomIt first, RandomIt last, Comp comp) {
+    giopler::dev::Function function;
 	typedef typename RandomIt::value_type T;
 	size_t size = last - first;
 	if (size <= kBaseCase) {
@@ -267,21 +267,18 @@ void stl_sort(RandomIt first, RandomIt last) {
 // Note: As written, this program will send 8 events to the Giopler servers.
 int main()
 {
-  constexpr size_t elements = 1024;
+  for (int elements = 64; elements <= 1024; elements += 64) {
+    std::vector<int> values(elements);
+    for (auto&& x : values) x = rand();
+    auto res1 = funnelsort(values.begin(), values.end());
 
-  std::vector<int> values(elements);
-  for (auto&& x : values)   x = rand();
+    for (auto&& x : values) x = rand();
+    auto res2 = funnelsort(values.begin(), values.end());
 
-  {
-    auto res = funnelsort(values.begin(), values.end());
+    for (auto&& x : values) x = rand();
+    auto res3 = funnelsort(values.begin(), values.end());
 
-    bool ok = true;
-    for (size_t j = 0; j < elements; j++) {
-        if (res[j] != values[j])   ok = false;
-    }
-    giopler::dev::confirm(ok);
+    for (auto&& x : values) x = rand();
+    auto res4 = funnelsort(values.begin(), values.end());
   }
-
-  for (auto&& x : values)   x = rand();
-  stl_sort(values.begin(), values.end());
 }

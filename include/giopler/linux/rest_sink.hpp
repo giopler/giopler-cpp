@@ -28,7 +28,9 @@
 #include <openssl/ssl.h>
 using namespace std::literals;
 
-#include <brotli/encode.h>
+#define ZLIB_CONST
+#include "zlib.h"
+// #include <brotli/encode.h>
 
 // -----------------------------------------------------------------------------
 // https://stackoverflow.com/questions/22077802/simple-c-example-of-doing-an-http-post-and-consuming-the-response
@@ -112,7 +114,7 @@ class Rest : public Sink
     if (_is_localhost) {
       http_post(_json_web_token, _server_host, _server_port, json_body);
     } else {
-      post(json_body);
+      https_post(json_body);
     }
 
     return true;   // record was not filtered and it was written out (vestigial)
@@ -189,7 +191,7 @@ class Rest : public Sink
   // returns the JSON content if HTTP result status code >= 200 and < 300
   // https://wiki.openssl.org/index.php/Library_Initialization
   // https://wiki.openssl.org/index.php/SSL/TLS_Client
-  std::string_view post(std::string_view json_content) {
+  std::string_view https_post(std::string_view json_content) {
     if (SSL_get_shutdown(_ssl) == SSL_RECEIVED_SHUTDOWN) {
         close_connection();
         open_connection();
@@ -204,23 +206,28 @@ class Rest : public Sink
   }
 
   void send_request(std::string_view json_content) {
-      const std::string brotli_body = compress_json(json_content);
+      const std::string compressed_body = compress_gzip(json_content);
 
-      const int bytes_written = BIO_printf(_bio,
+      const int bytes_written_header = BIO_printf(_bio,
           "POST /api/v1/post_event HTTP/1.1\r\n"
           "Host: %s:%s\r\n"
           "Connection: keep-alive\r\n"
           "User-Agent: Giopler/1.0\r\n"
           "Authorization: Bearer %s\r\n"
           "Accept: application/json\r\n"
-          "Content-Encoding: br\r\n"
+          "Accept-Encoding: identity\r\n"
+          "Content-Encoding: gzip\r\n"
           "Content-Type: application/json\r\n"
           "Content-Length: %lu\r\n\r\n",
-          _server_host.c_str(), _server_port.c_str(), _json_web_token.c_str(), brotli_body.size());
-      assert(bytes_written > 0);
+          _server_host.c_str(), _server_port.c_str(), _json_web_token.c_str(), compressed_body.size());
+      assert(bytes_written_header > 0);
 
-      const int write_status = BIO_write(_bio, brotli_body.data(), static_cast<int>(brotli_body.size()));
-      assert(write_status > 0);
+      const int bytes_written_body = BIO_write(_bio, compressed_body.data(), static_cast<int>(compressed_body.size()));
+
+      const int should_retry = BIO_should_retry(_bio);
+      const int should_write = BIO_should_write(_bio);
+
+      assert(bytes_written_body >= 0);
   }
 
   void read_response() {
@@ -270,11 +277,60 @@ class Rest : public Sink
   }
 
   // -----------------------------------------------------------------------------
+  // initialize the gzip data structure
+  static void init_gzip(std::string_view input, char* output, int max_output_size, z_stream& zstream) {
+    zstream.zalloc     = Z_NULL;
+    zstream.zfree      = Z_NULL;
+    zstream.opaque     = Z_NULL;
+    zstream.avail_in   = static_cast<uint32_t>(input.size());
+    zstream.next_in    = reinterpret_cast<const uint8_t*>(input.data());
+    zstream.avail_out  = static_cast<uint32_t>(max_output_size);
+    zstream.next_out   = reinterpret_cast<uint8_t*>(output);
+
+    // Hard to believe they don't have a macro for gzip encoding. "Add 16" is the best thing zlib can do:
+    // "Add 16 to windowBits to write a simple gzip header and trailer around the compressed data instead of a zlib wrapper"
+    const int status = deflateInit2(&zstream, Z_DEFAULT_COMPRESSION, Z_DEFLATED, 15 | 16, 9, Z_DEFAULT_STRATEGY);
+    assert(status == Z_OK);
+  }
+
+  // -----------------------------------------------------------------------------
+  // return the maximum possible size of the compressed data
+  static std::size_t max_compress_size_gzip(std::string_view input) {
+    z_stream zstream;
+    init_gzip(input, nullptr, 0, zstream);
+    return deflateBound(&zstream, input.size());
+  }
+
+  // -----------------------------------------------------------------------------
+  // compress the input buffer using gzip data compression
+  static std::string compress_gzip(std::string_view input)
+  {
+    std::string output;
+    const std::size_t max_output_size = max_compress_size_gzip(input);
+    output.reserve(max_output_size);
+
+    z_stream zstream;
+    init_gzip(input, output.data(), static_cast<int>(max_output_size), zstream);
+    const int deflate_status = deflate(&zstream, Z_FINISH);
+    assert(deflate_status == Z_STREAM_END);
+    output.resize(zstream.total_out);
+    const int deflate_end_status = deflateEnd(&zstream);
+    assert(deflate_end_status == Z_OK);
+    return output;
+  }
+
+/*
+  // -----------------------------------------------------------------------------
+  std::size_t max_compress_size_brotli(std::string_view json) {
+    return BrotliEncoderMaxCompressedSize(json.size());
+  }
+
+  // -----------------------------------------------------------------------------
   // https://www.lucidchart.com/techblog/2019/12/06/json-compression-alternative-binary-formats-and-compression-methods/
   // Summary: sending plain JSON data compressed with Brotli(10) works really well
   // Brotli works well for compressing JSON (textual) data and is supported by web browsers
   // default quality is 11
-  static std::string compress_json(std::string_view json) {
+  static std::string compress_brotli(std::string_view json) {
     std::string output;
     std::size_t output_size = BrotliEncoderMaxCompressedSize(json.size());
     assert(output_size);
@@ -286,6 +342,7 @@ class Rest : public Sink
     output.resize(output_size);
     return output;
   }
+*/
 
   // -----------------------------------------------------------------------------
   static void http_error(const char *msg) { perror(msg); exit(0); }
@@ -294,7 +351,6 @@ class Rest : public Sink
   /// this is a stand-alone function to test sending events to an http connection (typically localhost)
   // uses the Linux socket API
   // closes the connection after each POST message
-  // does not bother to compress the data
   // https://stackoverflow.com/questions/22077802/simple-c-example-of-doing-an-http-post-and-consuming-the-response
   static void http_post(std::string token, std::string host, std::string port_str, std::string_view json_body)
   {
@@ -303,6 +359,7 @@ class Rest : public Sink
       struct sockaddr_in serv_addr;
       int sockfd, bytes, sent, received, total;
       char headers[4096], response[4096];
+      const std::string compressed_body = compress_gzip(json_body);
 
       sprintf(headers,
         "POST /api/v1/post_event HTTP/1.1\r\n"
@@ -311,9 +368,11 @@ class Rest : public Sink
         "User-Agent: Giopler/1.0\r\n"
         "Authorization: Bearer %s\r\n"
         "Accept: application/json\r\n"
+        "Accept-Encoding: identity\r\n"
+        "Content-Encoding: gzip\r\n"
         "Content-Type: application/json\r\n"
         "Content-Length: %lu\r\n\r\n",
-        host.c_str(), port, token.c_str(), json_body.length());
+        host.c_str(), port, token.c_str(), compressed_body.length());
 
       // printf("HTTP Request Headers:\n%s\n", headers);
       // printf("HTTP Request Body:\n%s\n", json_body.data());
@@ -349,10 +408,10 @@ class Rest : public Sink
       } while (sent < total);
 
       // send the body
-      total = (int)json_body.length();
+      total = (int)compressed_body.length();
       sent = 0;
       do {
-          bytes = (int)write(sockfd,json_body.data()+sent,total-sent);
+          bytes = (int)write(sockfd,compressed_body.data()+sent,total-sent);
           if (bytes < 0)
               http_error("ERROR writing body to socket");
           if (bytes == 0)
