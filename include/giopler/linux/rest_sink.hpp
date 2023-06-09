@@ -30,7 +30,6 @@ using namespace std::literals;
 
 #define ZLIB_CONST
 #include "zlib.h"
-// #include <brotli/encode.h>
 
 // -----------------------------------------------------------------------------
 // https://stackoverflow.com/questions/22077802/simple-c-example-of-doing-an-http-post-and-consuming-the-response
@@ -80,13 +79,13 @@ class Rest : public Sink
 
     const char* server_host = std::getenv("GIOPLER_HOST");
     _server_host            = server_host ? server_host : "www.giopler.com";
-    _is_localhost           = (_server_host == "localhost");
+    _is_localhost           = (_server_host == "localhost" || _server_host == "127.0.0.1");
     const char* server_port = std::getenv("GIOPLER_PORT");
     _server_port            = server_port ? server_port : (_is_localhost ? "80" : "443");
 
     _json_web_token         = std::getenv("GIOPLER_TOKEN");
 
-    printf("Giopler Host: %s:%s\n", _server_host.c_str(), _server_port.c_str());
+    printf("Giopler Server: %s%s:%s\n", (_is_localhost ? "http://" : "https://"), _server_host.c_str(), _server_port.c_str());
 
     if (!_is_localhost)   open_connection();
   }
@@ -206,7 +205,7 @@ class Rest : public Sink
   }
 
   void send_request(std::string_view json_content) {
-      const std::string compressed_body = compress_gzip(json_content);
+      const std::vector<std::uint8_t> compressed_body = compress_gzip(json_content);
 
       const int bytes_written_header = BIO_printf(_bio,
           "POST /api/v1/post_event HTTP/1.1\r\n"
@@ -278,7 +277,7 @@ class Rest : public Sink
 
   // -----------------------------------------------------------------------------
   // initialize the gzip data structure
-  static void init_gzip(std::string_view input, char* output, int max_output_size, z_stream& zstream) {
+  static void init_gzip(std::string_view input, std::uint8_t* output, int max_output_size, z_stream& zstream) {
     zstream.zalloc     = Z_NULL;
     zstream.zfree      = Z_NULL;
     zstream.opaque     = Z_NULL;
@@ -303,11 +302,10 @@ class Rest : public Sink
 
   // -----------------------------------------------------------------------------
   // compress the input buffer using gzip data compression
-  static std::string compress_gzip(std::string_view input)
+  static std::vector<std::uint8_t> compress_gzip(std::string_view input)
   {
-    std::string output;
     const std::size_t max_output_size = max_compress_size_gzip(input);
-    output.reserve(max_output_size);
+    std::vector<std::uint8_t> output(max_output_size);
 
     z_stream zstream;
     init_gzip(input, output.data(), static_cast<int>(max_output_size), zstream);
@@ -318,31 +316,6 @@ class Rest : public Sink
     assert(deflate_end_status == Z_OK);
     return output;
   }
-
-/*
-  // -----------------------------------------------------------------------------
-  std::size_t max_compress_size_brotli(std::string_view json) {
-    return BrotliEncoderMaxCompressedSize(json.size());
-  }
-
-  // -----------------------------------------------------------------------------
-  // https://www.lucidchart.com/techblog/2019/12/06/json-compression-alternative-binary-formats-and-compression-methods/
-  // Summary: sending plain JSON data compressed with Brotli(10) works really well
-  // Brotli works well for compressing JSON (textual) data and is supported by web browsers
-  // default quality is 11
-  static std::string compress_brotli(std::string_view json) {
-    std::string output;
-    std::size_t output_size = BrotliEncoderMaxCompressedSize(json.size());
-    assert(output_size);
-    output.reserve(output_size);
-    const BROTLI_BOOL status = BrotliEncoderCompress(BROTLI_DEFAULT_QUALITY, BROTLI_DEFAULT_WINDOW, BROTLI_MODE_TEXT,
-                                                     json.size(), reinterpret_cast<const uint8_t *>(json.data()),
-                                                     &output_size, reinterpret_cast<uint8_t *>(output.data()));
-    assert(status == BROTLI_TRUE);
-    output.resize(output_size);
-    return output;
-  }
-*/
 
   // -----------------------------------------------------------------------------
   static void http_error(const char *msg) { perror(msg); exit(0); }
@@ -359,7 +332,7 @@ class Rest : public Sink
       struct sockaddr_in serv_addr;
       int sockfd, bytes, sent, received, total;
       char headers[4096], response[4096];
-      const std::string compressed_body = compress_gzip(json_body);
+      const std::vector<std::uint8_t> compressed_body = compress_gzip(json_body);
 
       sprintf(headers,
         "POST /api/v1/post_event HTTP/1.1\r\n"
@@ -369,10 +342,9 @@ class Rest : public Sink
         "Authorization: Bearer %s\r\n"
         "Accept: application/json\r\n"
         "Accept-Encoding: identity\r\n"
-        "Content-Encoding: gzip\r\n"
-        "Content-Type: application/json\r\n"
+        "Content-Type: application/octet-stream\r\n"
         "Content-Length: %lu\r\n\r\n",
-        host.c_str(), port, token.c_str(), compressed_body.length());
+        host.c_str(), port, token.c_str(), compressed_body.size());
 
       // printf("HTTP Request Headers:\n%s\n", headers);
       // printf("HTTP Request Body:\n%s\n", json_body.data());
@@ -408,7 +380,7 @@ class Rest : public Sink
       } while (sent < total);
 
       // send the body
-      total = (int)compressed_body.length();
+      total = (int)compressed_body.size();
       sent = 0;
       do {
           bytes = (int)write(sockfd,compressed_body.data()+sent,total-sent);
@@ -421,7 +393,7 @@ class Rest : public Sink
 
       // receive the response
       //memset(response,0,sizeof(response));   // no need to clear the input buffer
-      total = sizeof(response)-1;
+      total = sizeof(response);
       received = 0;
       do {
           bytes = (int)read(sockfd,response+received,total-received);
@@ -432,11 +404,14 @@ class Rest : public Sink
           received += bytes;
       } while (received < total);
 
-       // If the number of received bytes is the total size of the
-       // array, then we have run out of space to store the response.
-       // This means it hasn't all arrived yet - so that's a bad thing.
+      // If the number of received bytes is the total size of the
+      // array, then we have run out of space to store the response.
+      // This means it hasn't all arrived yet - so that's a bad thing.
       if (received == total)
           http_error("ERROR storing complete response from socket");
+
+      if (response[9] != '2')
+          http_error(response);
 
       // close the socket
       close(sockfd);

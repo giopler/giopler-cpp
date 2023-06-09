@@ -27,9 +27,6 @@ project(Giopler-Cpp
 
 include(CTest)
 
-# need our own FindBrotli.cmake file
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
-
 # ------------------------------------------------------------------------------
 # https://cmake.org/cmake/help/latest/module/FindThreads.html
 set(THREADS_PREFER_PTHREAD_FLAG ON)
@@ -49,13 +46,8 @@ endif()
 # https://cmake.org/cmake/help/latest/module/FindZLIB.html
 find_package(ZLIB REQUIRED)
 if(NOT ZLIB_FOUND)
-message(ERROR zLib compression library is required.)
+message(ERROR zlib compression library is required.)
 endif()
-
-# ------------------------------------------------------------------------------
-# cmake/FindBrotli.cmake
-# https://github.com/google/brotli/
-#find_package(Brotli REQUIRED)
 
 # ------------------------------------------------------------------------------
 # ------------------------------------------------------------------------------
