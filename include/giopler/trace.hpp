@@ -77,7 +77,7 @@ void line([[maybe_unused]] StringFunction auto message_function,
 // https://gitlab.gnome.org/GNOME/glib/-/blob/main/glib/gbacktrace.h
 // https://web.archive.org/web/20210114140648/https://processors.wiki.ti.com/index.php/Software_Breakpoints_in_the_IDE
 [[gnu::always_inline]][[clang::always_inline]][[msvc::forceinline]] inline
-void set_breakpoint()
+void breakpoint()
 {
   if constexpr (g_build_mode == BuildMode::Dev) {
 #if defined(__has_builtin) && __has_builtin(__builtin_debugtrap)

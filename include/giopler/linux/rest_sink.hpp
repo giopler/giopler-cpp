@@ -205,28 +205,45 @@ class Rest : public Sink
   }
 
   void send_request(std::string_view json_content) {
-      const std::vector<std::uint8_t> compressed_body = compress_gzip(json_content);
+    char headers[4096];
+    const std::vector<std::uint8_t> compressed_body = compress_gzip(json_content);
+    int total, sent, bytes;
 
-      const int bytes_written_header = BIO_printf(_bio,
-          "POST /api/v1/post_event HTTP/1.1\r\n"
-          "Host: %s:%s\r\n"
-          "Connection: keep-alive\r\n"
-          "User-Agent: Giopler/1.0\r\n"
-          "Authorization: Bearer %s\r\n"
-          "Accept: application/json\r\n"
-          "Accept-Encoding: identity\r\n"
-          "Content-Encoding: gzip\r\n"
-          "Content-Type: application/json\r\n"
-          "Content-Length: %lu\r\n\r\n",
-          _server_host.c_str(), _server_port.c_str(), _json_web_token.c_str(), compressed_body.size());
-      assert(bytes_written_header > 0);
+    sprintf(headers,
+        "POST /api/v1/post_event HTTP/1.1\r\n"
+        "Host: %s:%s\r\n"
+        "Connection: keep-alive\r\n"
+        "User-Agent: Giopler/1.0\r\n"
+        "Authorization: Bearer %s\r\n"
+        "Accept: application/json\r\n"
+        "Accept-Encoding: identity\r\n"
+        "Content-Type: application/octet-stream\r\n"
+        "Content-Length: %lu\r\n\r\n",
+        _server_host.c_str(), _server_port.c_str(), _json_web_token.c_str(), compressed_body.size());
 
-      const int bytes_written_body = BIO_write(_bio, compressed_body.data(), static_cast<int>(compressed_body.size()));
+    // send the headers
+    total = (int)strlen(headers);
+    sent = 0;
+    do {
+        bytes = BIO_write(_bio,headers+sent,total-sent);
+        if (bytes < 0)
+            http_error("ERROR writing headers via OpenSSL");
+        if (bytes == 0)
+            break;
+        sent += bytes;
+    } while (sent < total);
 
-      const int should_retry = BIO_should_retry(_bio);
-      const int should_write = BIO_should_write(_bio);
-
-      assert(bytes_written_body >= 0);
+    // send the body
+    total = (int)compressed_body.size();
+    sent = 0;
+    do {
+        bytes = BIO_write(_bio,compressed_body.data()+sent,total-sent);
+        if (bytes < 0)
+            http_error("ERROR writing body via OpenSSL");
+        if (bytes == 0)
+            break;
+        sent += bytes;
+    } while (sent < total);
   }
 
   void read_response() {
