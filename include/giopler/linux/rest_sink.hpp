@@ -77,11 +77,10 @@ class Rest : public Sink
     const char* proxy_port  = std::getenv("GIOPLER_PROXY_PORT");
     _proxy_port             = proxy_port ? proxy_port : "443";
 
-    const char* server_host = std::getenv("GIOPLER_HOST");
-    _server_host            = server_host ? server_host : "www.giopler.com";
-    _is_localhost           = (_server_host == "localhost" || _server_host == "127.0.0.1");
-    const char* server_port = std::getenv("GIOPLER_PORT");
-    _server_port            = server_port ? server_port : (_is_localhost ? "80" : "443");
+    const char* local_host  = std::getenv("GIOPLER_LOCAL");
+    _is_localhost           = local_host;   // convert pointer to boolean
+    _server_host            = _is_localhost ? "127.0.0.1" : "www.giopler.com";
+    _server_port            = _is_localhost ? "3000" : "443";
 
     _json_web_token         = std::getenv("GIOPLER_TOKEN");
 
@@ -131,13 +130,12 @@ class Rest : public Sink
   bool _is_localhost;
 
   std::mutex _mutex;
-  constexpr static std::size_t RESULT_BUFFER_SIZE = 2048;
+  constexpr static std::size_t RESULT_BUFFER_SIZE = 1024;
   SSL_CTX* _ssl_ctx = nullptr;
   const SSL_METHOD* _ssl_method;
   BIO* _bio = nullptr;   // OpenSSL I/O stream abstraction (similar to FILE*)
-  SSL* _ssl = nullptr;
+  SSL* _ssl = nullptr;   // no need to free
   int _response_status;
-  const char* _result_contents;
   char result_buffer[RESULT_BUFFER_SIZE];
 
   /// open a secure and persistent connection to the server
@@ -152,20 +150,20 @@ class Rest : public Sink
       const int verify_paths_status = SSL_CTX_set_default_verify_paths(_ssl_ctx);
       assert(verify_paths_status == 1);
 
-      SSL_CTX_set_verify_depth(_ssl_ctx, 4);
+      SSL_CTX_set_verify_depth(_ssl_ctx, 5);
 
       const int min_proto_status = SSL_CTX_set_min_proto_version(_ssl_ctx, TLS1_VERSION);
       assert(min_proto_status);
 
-      SSL_CTX_set_options(_ssl_ctx, SSL_OP_NO_COMPRESSION);
-
       _bio = BIO_new_ssl_connect(_ssl_ctx);
       assert(_bio);
 
-      //BIO_set_callback(_bio, BIO_debug_callback);   // ********************************
+      //BIO_set_callback_ex(_bio, BIO_debug_callback_ex);   // ********************************
 
       const long bio_get_ssl_status = BIO_get_ssl(_bio, &_ssl);
       assert(bio_get_ssl_status);
+
+      SSL_clear_options(_ssl, SSL_OP_NO_COMPRESSION);   // enabled by default
 
       const int tlsext_host_status = SSL_set_tlsext_host_name(_ssl, _server_host.c_str());
       assert(tlsext_host_status);
@@ -179,8 +177,26 @@ class Rest : public Sink
       assert(set_conn_port_status == 1);
 
       const int bio_conn_status = BIO_do_connect(_bio);
-      ERR_print_errors(_bio);
       assert(bio_conn_status == 1);
+
+      const long handshake_status = BIO_do_handshake(_bio);
+      assert(handshake_status == 1);
+
+      X509* cert = SSL_get_peer_certificate(_ssl);
+      if (cert)   X509_free(cert);    // free immediately
+      assert(cert);
+
+      const long verify_status = SSL_get_verify_result(_ssl);
+      assert(verify_status == X509_V_OK);
+
+      ERR_print_errors(_bio);
+  }
+
+  void check_reopen_connection() {
+    if (SSL_get_shutdown(_ssl)) {   // SSL_SENT_SHUTDOWN or SSL_RECEIVED_SHUTDOWN
+        close_connection();
+        open_connection();
+    }
   }
 
   /// perform a HTTP POST of a JSON payload
@@ -190,22 +206,19 @@ class Rest : public Sink
   // returns the JSON content if HTTP result status code >= 200 and < 300
   // https://wiki.openssl.org/index.php/Library_Initialization
   // https://wiki.openssl.org/index.php/SSL/TLS_Client
-  std::string_view https_post(std::string_view json_content) {
-    if (SSL_get_shutdown(_ssl) == SSL_RECEIVED_SHUTDOWN) {
-        close_connection();
-        open_connection();
-    }
-
+  void https_post(std::string_view json_content) {
+    check_reopen_connection();
     send_request(json_content);
+
     read_response();
-    parse_response_status();
-    assert(_response_status == 200);
-    parse_response_contents();
-    return _result_contents;
+    if (strlen(result_buffer)) {
+      parse_response_status();
+      assert(_response_status == 200);
+    }
   }
 
   void send_request(std::string_view json_content) {
-    char headers[4096];
+    char headers[1024];
     const std::vector<std::uint8_t> compressed_body = compress_gzip(json_content);
     int total, sent, bytes;
 
@@ -226,24 +239,33 @@ class Rest : public Sink
     sent = 0;
     do {
         bytes = BIO_write(_bio,headers+sent,total-sent);
-        if (bytes < 0)
-            http_error("ERROR writing headers via OpenSSL");
+        ERR_print_errors(_bio);
+        if (bytes == -2)
+            http_error("ERROR writing headers via OpenSSL", _bio);
         if (bytes == 0)
             break;
-        sent += bytes;
-    } while (sent < total);
+        if (bytes > 0)
+            sent += bytes;
+    } while (sent < total || BIO_should_retry(_bio));
 
     // send the body
     total = (int)compressed_body.size();
     sent = 0;
     do {
         bytes = BIO_write(_bio,compressed_body.data()+sent,total-sent);
-        if (bytes < 0)
-            http_error("ERROR writing body via OpenSSL");
+        ERR_print_errors(_bio);
+        if (bytes == -2)
+            http_error("ERROR writing body via OpenSSL", _bio);
         if (bytes == 0)
             break;
-        sent += bytes;
-    } while (sent < total);
+        if (bytes > 0)
+            sent += bytes;
+    } while (sent < total || BIO_should_retry(_bio));
+
+    const int flush_status = BIO_flush(_bio);
+    ERR_print_errors(_bio);
+    if (flush_status != 1)
+        http_error("ERROR flushing POST data", _bio);
   }
 
   void read_response() {
@@ -252,8 +274,10 @@ class Rest : public Sink
       int read_status;
       do {
           bytes_read = 0;
-          read_status = BIO_read_ex(_bio, &result_buffer[bytes_total], RESULT_BUFFER_SIZE-bytes_total, &bytes_read);
+          read_status = BIO_read_ex(_bio, &(result_buffer[bytes_total]), RESULT_BUFFER_SIZE-bytes_total, &bytes_read);
+          ERR_print_errors(_bio);
           bytes_total += bytes_read;
+
       } while (read_status == 1 || BIO_should_retry(_bio));
 
       result_buffer[bytes_total] = '\0';
@@ -270,13 +294,6 @@ class Rest : public Sink
       if (match.size() == 2) {
           _response_status = std::stoi(match[1]);
       }
-  }
-
-  void parse_response_contents() {
-      std::string_view result{result_buffer};
-      const std::size_t position = result.find("\r\n\r\n");
-      assert(position != std::string_view::npos);
-      _result_contents = &result_buffer[position+4];
   }
 
   /// close and clean-up data for a previously open connection
@@ -335,7 +352,10 @@ class Rest : public Sink
   }
 
   // -----------------------------------------------------------------------------
-  static void http_error(const char *msg) { perror(msg); exit(0); }
+  static void http_error(const char *msg, BIO* bio = nullptr) {
+    if (bio)   ERR_print_errors(bio);
+    perror(msg); exit(0);
+  }
 
   // ---------------------------------------------------------------------------
   /// this is a stand-alone function to test sending events to an http connection (typically localhost)
@@ -393,7 +413,8 @@ class Rest : public Sink
               http_error("ERROR writing headers to socket");
           if (bytes == 0)
               break;
-          sent += bytes;
+          if (bytes > 0)
+              sent += bytes;
       } while (sent < total);
 
       // send the body
@@ -405,7 +426,8 @@ class Rest : public Sink
               http_error("ERROR writing body to socket");
           if (bytes == 0)
               break;
-          sent += bytes;
+          if (bytes > 0)
+              sent += bytes;
       } while (sent < total);
 
       // receive the response
