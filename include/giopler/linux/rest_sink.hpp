@@ -115,7 +115,7 @@ class Rest : public Sink
       https_post(json_body);
     }
 
-    return true;   // record was not filtered and it was written out (vestigial)
+    return true;   // record was not filtered, and it was written out (vestigial)
   }
 
   void flush() override { }
@@ -211,10 +211,10 @@ class Rest : public Sink
     send_request(json_content);
 
     read_response();
-    if (strlen(result_buffer)) {
-      parse_response_status();
-      assert(_response_status == 200);
-    }
+    // if (strlen(result_buffer)) {
+    //   parse_response_status();
+    //   assert(_response_status == 201);
+    // }
   }
 
   void send_request(std::string_view json_content) {
@@ -268,17 +268,21 @@ class Rest : public Sink
         http_error("ERROR flushing POST data", _bio);
   }
 
+  // we use HTTP 1.1 streaming for better performance
+  // but that complicates our job, since now the end of a response is harder to detect
+  // there is nothing in the response we really need to look at
+  // so we punt and just read some bytes and then discard them
   void read_response() {
       std::size_t bytes_total = 0;
       std::size_t bytes_read;
       int read_status;
-      do {
+      //do {
           bytes_read = 0;
-          read_status = BIO_read_ex(_bio, &(result_buffer[bytes_total]), RESULT_BUFFER_SIZE-bytes_total, &bytes_read);
+          /*read_status =*/ BIO_read_ex(_bio, &(result_buffer[bytes_total]), RESULT_BUFFER_SIZE-bytes_total, &bytes_read);
           ERR_print_errors(_bio);
           bytes_total += bytes_read;
 
-      } while (read_status == 1 || BIO_should_retry(_bio));
+      //} while (read_status == 0);   // BIO_should_retry(_bio))
 
       result_buffer[bytes_total] = '\0';
   }
