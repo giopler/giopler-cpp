@@ -62,7 +62,7 @@ namespace giopler::sink {
 // -----------------------------------------------------------------------------
 // there is only one of these objects created per host/path
 // we use a mutex to serialize the HTTP writes
-class Rest : public Sink
+class Rest
 {
  public:
   /// open a persistent connection to the server
@@ -89,25 +89,17 @@ class Rest : public Sink
     if (!_is_localhost)   open_connection();
   }
 
-  ~Rest() override {
+  ~Rest() {
     close_connection();
   }
 
-  /// add a new JSON format data record sink
-  static void add_sink()
-  {
-    g_sink_manager.add_sink(std::make_unique<Rest>());
-  }
-
- protected:
   /// post the record to the server
   // a thread gets created for each record we are trying to write
   // there is only one Rest sink object created
   // use a mutex to serialize the writes
   // this maximizes the chances that the HTTP connection will stay open
-  bool write_record(std::shared_ptr<Record> record) override {
+  bool write_record(std::shared_ptr<Record> record) {
     const std::string json_body{record_to_json(record)};   // don't need the lock for this
-    const std::lock_guard<std::mutex> lock{_mutex};
 
     if (_is_localhost) {
       http_post(_json_web_token, _server_host, _server_port, json_body);
@@ -118,78 +110,81 @@ class Rest : public Sink
     return true;   // record was not filtered, and it was written out (vestigial)
   }
 
-  void flush() override { }
-
  private:
   std::string _proxy_host;
   std::string _proxy_port;
   std::string _server_host;
   std::string _server_port;
   std::string _json_web_token;
-  bool _is_proxy;
-  bool _is_localhost;
+  bool _is_proxy = false;
+  bool _is_localhost = false;
 
-  std::mutex _mutex;
   constexpr static std::size_t RESULT_BUFFER_SIZE = 1024;
   SSL_CTX* _ssl_ctx = nullptr;
-  const SSL_METHOD* _ssl_method;
+  const SSL_METHOD* _ssl_method = nullptr;
   BIO* _bio = nullptr;   // OpenSSL I/O stream abstraction (similar to FILE*)
   SSL* _ssl = nullptr;   // no need to free
-  int _response_status;
-  char result_buffer[RESULT_BUFFER_SIZE];
+  char _result_buffer[RESULT_BUFFER_SIZE] = "";
 
   /// open a secure and persistent connection to the server
   void open_connection()
   {
-      _ssl_method = TLS_client_method();
-      assert(_ssl_method);
+    _ssl_method = TLS_client_method();
+    assert(_ssl_method);
 
-      _ssl_ctx = SSL_CTX_new(_ssl_method);
-      assert(_ssl_ctx);
+    _ssl_ctx = SSL_CTX_new(_ssl_method);
+    assert(_ssl_ctx);
 
-      const int verify_paths_status = SSL_CTX_set_default_verify_paths(_ssl_ctx);
-      assert(verify_paths_status == 1);
+    const int verify_paths_status = SSL_CTX_set_default_verify_paths(_ssl_ctx);
+    assert(verify_paths_status == 1);
 
-      SSL_CTX_set_verify_depth(_ssl_ctx, 5);
+    SSL_CTX_set_verify_depth(_ssl_ctx, 5);
 
-      const int min_proto_status = SSL_CTX_set_min_proto_version(_ssl_ctx, TLS1_VERSION);
-      assert(min_proto_status);
+    const int min_proto_status = SSL_CTX_set_min_proto_version(_ssl_ctx, TLS1_VERSION);
+    assert(min_proto_status);
 
-      _bio = BIO_new_ssl_connect(_ssl_ctx);
-      assert(_bio);
+    SSL_CTX_set_mode(_ssl_ctx, SSL_MODE_AUTO_RETRY);   // do not bother app with requests to retry
 
-      //BIO_set_callback_ex(_bio, BIO_debug_callback_ex);   // ********************************
+    _bio = BIO_new_ssl_connect(_ssl_ctx);
+    assert(_bio);
 
-      const long bio_get_ssl_status = BIO_get_ssl(_bio, &_ssl);
-      assert(bio_get_ssl_status);
+    //BIO_set_callback_ex(_bio, BIO_debug_callback_ex);   // ********************************
 
-      SSL_clear_options(_ssl, SSL_OP_NO_COMPRESSION);   // enabled by default
+    const long bio_get_ssl_status = BIO_get_ssl(_bio, &_ssl);
+    ERR_print_errors(_bio);
+    assert(bio_get_ssl_status);
 
-      const int tlsext_host_status = SSL_set_tlsext_host_name(_ssl, _server_host.c_str());
-      assert(tlsext_host_status);
+    SSL_clear_options(_ssl, SSL_OP_NO_COMPRESSION);   // enabled by default
 
-      SSL_set_mode(_ssl, SSL_MODE_AUTO_RETRY);
+    const int tlsext_host_status = SSL_set_tlsext_host_name(_ssl, _server_host.c_str());
+    assert(tlsext_host_status);
 
-      const long set_conn_hostname_status = BIO_set_conn_hostname(_bio, _server_host.c_str());
-      assert(set_conn_hostname_status == 1);
+    SSL_set_mode(_ssl, SSL_MODE_AUTO_RETRY);   // do not bother app with requests to retry
 
-      const long set_conn_port_status = BIO_set_conn_port(_bio, _server_port.c_str());
-      assert(set_conn_port_status == 1);
+    const long set_conn_hostname_status = BIO_set_conn_hostname(_bio, _server_host.c_str());
+    ERR_print_errors(_bio);
+    assert(set_conn_hostname_status == 1);
 
-      const int bio_conn_status = BIO_do_connect(_bio);
-      assert(bio_conn_status == 1);
+    const long set_conn_port_status = BIO_set_conn_port(_bio, _server_port.c_str());
+    ERR_print_errors(_bio);
+    assert(set_conn_port_status == 1);
 
-      const long handshake_status = BIO_do_handshake(_bio);
-      assert(handshake_status == 1);
+    const int bio_conn_status = BIO_do_connect(_bio);
+    ERR_print_errors(_bio);
+    assert(bio_conn_status == 1);
 
-      X509* cert = SSL_get_peer_certificate(_ssl);
-      if (cert)   X509_free(cert);    // free immediately
-      assert(cert);
+    const long handshake_status = BIO_do_handshake(_bio);
+    ERR_print_errors(_bio);
+    assert(handshake_status == 1);
 
-      const long verify_status = SSL_get_verify_result(_ssl);
-      assert(verify_status == X509_V_OK);
+    X509* cert = SSL_get_peer_certificate(_ssl);
+    assert(cert);
+    if (cert)   X509_free(cert);    // free immediately
 
-      ERR_print_errors(_bio);
+    const long verify_status = SSL_get_verify_result(_ssl);
+    assert(verify_status == X509_V_OK);
+
+    ERR_print_errors(_bio);
   }
 
   void check_reopen_connection() {
@@ -211,10 +206,12 @@ class Rest : public Sink
     send_request(json_content);
 
     read_response();
-    // if (strlen(result_buffer)) {
-    //   parse_response_status();
-    //   assert(_response_status == 201);
-    // }
+    const int response_status = parse_response_status();
+    assert(response_status == 201);
+
+    if (is_chunked_response()) {
+      read_response();          // discard zero length end chunk
+    }
   }
 
   void send_request(std::string_view json_content) {
@@ -228,6 +225,7 @@ class Rest : public Sink
         "Connection: keep-alive\r\n"
         "User-Agent: Giopler/1.0\r\n"
         "Authorization: Bearer %s\r\n"
+        "Connection: keep-alive\r\n"
         "Accept: application/json\r\n"
         "Accept-Encoding: identity\r\n"
         "Content-Type: application/octet-stream\r\n"
@@ -261,11 +259,6 @@ class Rest : public Sink
         if (bytes > 0)
             sent += bytes;
     } while (sent < total || BIO_should_retry(_bio));
-
-    const int flush_status = BIO_flush(_bio);
-    ERR_print_errors(_bio);
-    if (flush_status != 1)
-        http_error("ERROR flushing POST data", _bio);
   }
 
   // we use HTTP 1.1 streaming for better performance
@@ -276,28 +269,45 @@ class Rest : public Sink
       std::size_t bytes_total = 0;
       std::size_t bytes_read;
       int read_status;
-      //do {
+      do {
           bytes_read = 0;
-          /*read_status =*/ BIO_read_ex(_bio, &(result_buffer[bytes_total]), RESULT_BUFFER_SIZE-bytes_total, &bytes_read);
+          /* read_status = */ BIO_read_ex(_bio, &(_result_buffer[bytes_total]), RESULT_BUFFER_SIZE-bytes_total, &bytes_read);
           ERR_print_errors(_bio);
           bytes_total += bytes_read;
 
-      //} while (read_status == 0);   // BIO_should_retry(_bio))
+      } while (bytes_total == 0 || BIO_should_retry(_bio));
 
-      result_buffer[bytes_total] = '\0';
+      _result_buffer[bytes_total] = '\0';
   }
 
-  // HTTP method names are case sensitive
-  // HTTP header names are case insensitive
-  void parse_response_status() {
-      static std::regex http_first_line_regex{"^HTTP/1\\.1 ([[:digit:]]+) ", std::regex::optimize};
+  // HTTP method names are case-sensitive
+  // HTTP header names are case-insensitive
+  int parse_response_status() {
+      static std::regex http_first_line_regex{"^HTTP/1\\.[01] ([[:digit:]]+) ", std::regex::optimize};
 
       std::cmatch match;
-      std::regex_search(result_buffer, match, http_first_line_regex);
+      std::regex_search(_result_buffer, match, http_first_line_regex);
       assert(match.ready());
-      if (match.size() == 2) {
-          _response_status = std::stoi(match[1]);
+      return (match.size() == 2) ? std::stoi(match[1]) : 0;
+  }
+
+  // https://en.wikipedia.org/wiki/Chunked_transfer_encoding
+  bool is_chunked_response() {
+      static std::regex http_chunked_regex{"transfer-encoding: chunked", std::regex::optimize|std::regex::icase};
+      static std::regex http_end_chunk_regex{"0\r\n\r\n", std::regex::optimize};
+
+      std::cmatch match_chunked;
+      std::regex_search(_result_buffer, match_chunked, http_chunked_regex);
+      assert(match_chunked.ready());
+
+      if (!match_chunked.empty()) {
+        std::cmatch match_end_chunk;
+        std::regex_search(_result_buffer, match_end_chunk, http_end_chunk_regex);
+        assert(match_end_chunk.ready());
+        return match_end_chunk.empty();   // chunked data, but have not seen the end chunk
       }
+
+      return false;   // not chunked
   }
 
   /// close and clean-up data for a previously open connection
