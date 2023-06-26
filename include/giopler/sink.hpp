@@ -83,10 +83,10 @@ class SinkManager final {
   static void write_record(std::shared_ptr<Record> record) {
     {
       const std::lock_guard<std::mutex> lock{_deque_mutex};
-      _deque_records.emplace_back(record);
+      _deque_records.emplace_back(record);   // shared_ptr is thread safe
     }
 
-    _cond_var.notify_one();
+    _cond_var.notify_one();   // only one listener anyway
   }
 
   /// write uncommitted changes to the underlying output sequences
@@ -106,22 +106,23 @@ class SinkManager final {
     std::this_thread::sleep_for(2000ms);
     Rest sink;
     std::size_t records_sent = 0;
-    bool have_records;
+    std::size_t records_left = 0;
 
-    do {
+    do {   // loop waiting for data to send or for the program to signal it is done
       {
         std::unique_lock<std::mutex> lock{_cond_var_mutex};
-        _cond_var.wait_for(lock, 1s);
+        _cond_var.wait_for(lock, 1s);   // wait for new records to process or one second
       }
 
       if (stop_token.stop_requested()) {
         const std::lock_guard<std::mutex> lock{_deque_mutex};
-        if (!_deque_records.empty()) {
-          std::cout << "Sending remaining " << _deque_records.size() << " events to the Giopler system..." << std::endl;
+        records_left = _deque_records.size();
+        if (records_left) {
+          std::cout << "Sending remaining " << records_left << " events to the Giopler system..." << std::endl;
         }
       }
 
-      do {
+      do {   // loop over records waiting to be sent
         {
           const std::lock_guard<std::mutex> lock{_deque_mutex};
           if (!_deque_records.empty()) {
@@ -129,15 +130,21 @@ class SinkManager final {
             _deque_records.pop_front();
             records_sent++;
           }
-          have_records = !_deque_records.empty();
+          records_left = _deque_records.size();
         }
 
-        std::this_thread::yield();   // don't hold the deque lock here
-      } while (have_records);
-    } while (!stop_token.stop_requested());
+        if (stop_token.stop_requested()) {
+          if ((records_left % 100) == 0) {
+            std::cout << "Giopler events left to send: " << records_left << std::endl;
+          }
+        } else {
+          std::this_thread::yield();   // yield to app if it is still running
+        }
+      } while (records_left);
+    } while (!stop_token.stop_requested());   // hang around in case we get more work to do in future
 
     if (records_sent) {
-      std::cout << records_sent << " events sent to the Giopler system" << std::endl;
+      std::cout << records_sent << " total events sent to the Giopler system" << std::endl;
     }
   }};
 };
