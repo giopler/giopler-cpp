@@ -54,7 +54,8 @@ int collatz(int number)
 }
 
 // -----------------------------------------------------------------------------
-// Note: As written, this program will send 398 events to the Giopler servers.
+// Note: As written, this program will send about 398 events to the Giopler servers.
+// This number will vary depending on the build mode.
 int main()
 {
   giopler::dev::Function function;

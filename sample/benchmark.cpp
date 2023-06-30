@@ -86,6 +86,7 @@ class FunnelTree {
 // assumption: this can only be called when start = end
 template <class T, class C>
 void FunnelTree<T, C>::fill() {
+    giopler::dev::Function function;
 	if (!can_fill) return;
 	start = 0;
 	end = 0;
@@ -113,6 +114,7 @@ void FunnelTree<T, C>::fill() {
 }
 
 void calculate_bufsizes_(vector<size_t>& v, int l, int r, size_t size) {
+    giopler::dev::Function function;
 	// take square root of size
 	size = pow(size, 0.5) + 1;
 	if (r - l <= 2) {
@@ -126,6 +128,7 @@ void calculate_bufsizes_(vector<size_t>& v, int l, int r, size_t size) {
 }
 
 vector<size_t> calculate_bufsizes(int depth, size_t initial_size) {
+    giopler::dev::Function function;
 	vector<size_t> res(depth);
 	res[0] = initial_size;
 	calculate_bufsizes_(res, 1, depth, initial_size);
@@ -136,6 +139,7 @@ template <class T, class Comp>
 FunnelTree<T, Comp>* create_tree_(int d, const vector<size_t>& depth_to_size,
 							const vector<vector<T>>& lists, int l, int r,
 							T* buffer, size_t *buf_used, Comp comp) {
+    giopler::dev::Function function;
 	auto *res = new FunnelTree<T, Comp>;
 	res->comp = comp;
 	// this node represents a single thing; leaf node
@@ -161,6 +165,7 @@ FunnelTree<T, Comp>* create_tree_(int d, const vector<size_t>& depth_to_size,
 
 template <class T, class Comp>
 FunnelTree<T, Comp>* create_tree(const vector<vector<T>>& lists, Comp comp) {
+    giopler::dev::Function function;
 	size_t k = lists.size(), tot_size = 0;
 	for (auto& l : lists)
 		tot_size += l.size();
@@ -206,6 +211,7 @@ class default_sort {
 	}
 
 	std::vector<T> base_case(std::vector<T> arr) {
+        giopler::dev::Function function;
 		//base case to take by lazy funnelsort
 		std::sort(arr.begin(), arr.end());
 		return arr;
@@ -214,6 +220,7 @@ class default_sort {
 
 template <class RandomIt>
 vector<typename RandomIt::value_type> funnelsort(RandomIt first, RandomIt last) {
+    giopler::dev::Function function;
 	return funnelsort(first, last, default_sort<RandomIt>());
 	//return funnelsort(first, last, std::greater<typename RandomIt::value_type>());
 }
@@ -248,6 +255,7 @@ vector<typename RandomIt::value_type> funnelsort(RandomIt first, RandomIt last, 
 
 template <class T, class Comp>
 vector<T> merge(const vector<vector<T>>& lists, Comp comp) {
+    giopler::dev::Function function;
 	auto root = create_tree(lists, comp);
 	root->fill();
 	vector<T> res(root->buffer, root->buffer + root->cap);
@@ -264,21 +272,28 @@ void stl_sort(RandomIt first, RandomIt last) {
 }
 
 // -----------------------------------------------------------------------------
-// Note: As written, this program will send 8 events to the Giopler servers.
+// Note: As written, this program will send about 25,000 events to the Giopler servers.
+// This number will vary depending on the build mode.
 int main()
 {
-  for (int elements = 64; elements <= 1024; elements += 64) {
-    std::vector<int> values(elements);
-    for (auto&& x : values) x = rand();
-    auto res1 = funnelsort(values.begin(), values.end());
+  std::random_device random_device;
+  std::default_random_engine random_engine{random_device()};
+  std::uniform_int_distribution<> int_distribution(0, 1024*1024*1024);
 
-    for (auto&& x : values) x = rand();
-    auto res2 = funnelsort(values.begin(), values.end());
+  for (int loop = 0; loop < 1; ++loop) {
+    for (int elements = 64; elements <= 1024; elements += 64) {    // 64 - 1024
+      std::vector<int> values(elements);
+      for (auto&& x : values) x = int_distribution(random_engine);
+      auto res1 = funnelsort(values.begin(), values.end());
 
-    for (auto&& x : values) x = rand();
-    auto res3 = funnelsort(values.begin(), values.end());
+      for (auto&& x : values) x = int_distribution(random_engine);
+      auto res2 = funnelsort(values.begin(), values.end());
 
-    for (auto&& x : values) x = rand();
-    auto res4 = funnelsort(values.begin(), values.end());
+      for (auto&& x : values) x = int_distribution(random_engine);
+      auto res3 = funnelsort(values.begin(), values.end());
+
+      for (auto&& x : values) x = int_distribution(random_engine);
+      auto res4 = funnelsort(values.begin(), values.end());
+    }
   }
 }

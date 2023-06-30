@@ -42,7 +42,8 @@ void world(int theres)
 }
 
 // -----------------------------------------------------------------------------
-// Note: As written, this program will send 16 events to the Giopler servers.
+// Note: As written, this program will send about 16 events to the Giopler servers.
+// This number will vary depending on the build mode.
 int main()
 {
   giopler::dev::Function function;

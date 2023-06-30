@@ -35,7 +35,8 @@ uint64_t ackermann(const uint64_t m, const uint64_t n) {
 }
 
 // -----------------------------------------------------------------------------
-// Note: As written, this program will send 241 events to the Giopler servers.
+// Note: As written, this program will send about 241 events to the Giopler servers.
+// This number will vary depending on the build mode.
 int main()
 {
   giopler::dev::confirm(ackermann(0, 1) == 2);  // 7 events through here

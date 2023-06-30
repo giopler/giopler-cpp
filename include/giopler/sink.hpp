@@ -65,15 +65,44 @@ namespace giopler::sink {
 /// Sink management class. Thread safe.
 class SinkManager final {
  public:
-  explicit SinkManager() {
+  explicit SinkManager()
+  {
+    _quiet = std::getenv("GIOPLER_QUIET");   // convert pointer to boolean
+
     if (!std::getenv("GIOPLER_TOKEN")) {
       throw std::runtime_error{"GIOPLER_TOKEN not defined"};
     }
+
+    const int openssl_status = OPENSSL_init_ssl(OPENSSL_INIT_LOAD_SSL_STRINGS, nullptr);
+    ERR_print_errors_fp(stderr);
+    assert(openssl_status == 1);
+
+    _processes.reserve(_process_count);
+    for (int process = 0; process < _process_count; ++process) {
+      _processes.emplace_back(_process_function);
+    }
+
+    if (!_quiet)
+      std::cout << gformat("Giopler: launched {} threads to process events\n", _process_count);
   }
 
   /// Waits for all sinks to finish processing data before exiting.
   ~SinkManager() {
-    flush();
+    {
+      const std::lock_guard<std::mutex> lock{_deque_mutex};
+      const std::size_t records_count = _deque_records.size();
+      if (records_count && !_quiet)
+        std::cout << gformat("Giopler: sending remaining {} event{} to Giopler system\n", records_count, (records_count > 1) ? "s" : "");
+    }
+
+    for (auto&& process : _processes) {
+      process.request_stop();
+    }
+    _cond_var.notify_all();
+    for (auto&& process : _processes) {
+      process.join();
+    }
+    assert(_deque_records.empty());   // all process threads should have exited by now
   }
 
   /// Write the record to the sink.
@@ -86,27 +115,44 @@ class SinkManager final {
       _deque_records.emplace_back(record);   // shared_ptr is thread safe
     }
 
-    _cond_var.notify_one();   // only one listener anyway
+    _cond_var.notify_one();   // will wake up one of the sleeping threads, if any
   }
 
   /// write uncommitted changes to the underlying output sequences
-  void flush() {
-    _process_records.request_stop();
-    _process_records.join();
+  // we wait no more than thirty seconds for the events to be sent
+  static void flush() {
+    std::size_t events_count;
+    int waits_count = 0;
+
+    do {
+      {
+        const std::lock_guard<std::mutex> lock{_deque_mutex};
+        events_count = _deque_records.size();
+      }
+      if (events_count) {
+        std::this_thread::sleep_for(1s);    // one second
+        waits_count++;
+      }
+    } while (events_count && waits_count < 30);   // thirty seconds
   }
 
  private:
+  // Warning: Increasing _process_count leads to higher lock contention at the servers.
+  //          This leads to lower throughput, not higher.
+  static constexpr int _process_count = 4;                                // processes to send events to the server
+  static constexpr std::size_t max_records_size = 10*1024*1024;           // JSON bytes before gzip compression
   static inline std::deque<std::shared_ptr<Record>> _deque_records;
-  static inline std::condition_variable _cond_var;
-  static inline std::mutex _cond_var_mutex;
   static inline std::mutex _deque_mutex;
+  static inline std::mutex _cond_var_mutex;
+  static inline std::condition_variable _cond_var;
+  static inline bool _quiet = false;
+  std::vector<std::jthread> _processes;
 
   // will take on average half a second to exit once requested
-  std::jthread _process_records{[](std::stop_token stop_token) -> void {
-    std::this_thread::sleep_for(2000ms);
+  constexpr static auto _process_function = [](std::stop_token stop_token) -> void {
     Rest sink;
-    std::size_t records_sent = 0;
     std::size_t records_left = 0;
+    bool is_stop_requested = false;
 
     do {   // loop waiting for data to send or for the program to signal it is done
       {
@@ -114,39 +160,43 @@ class SinkManager final {
         _cond_var.wait_for(lock, 1s);   // wait for new records to process or one second
       }
 
-      if (stop_token.stop_requested()) {
+      std::string records = "[";
+      records.reserve(max_records_size + 2048);   // 2048=a record should be smaller than this
+      int records_count = 0;
+      bool first = true;
+
+      {
+        const std::lock_guard<std::mutex> lock{_deque_mutex};
+        while (!_deque_records.empty()) {
+          if (first) {
+            first = false;
+          } else {
+            records.append(",");
+          }
+          records.append(record_to_json(_deque_records.front()));
+          _deque_records.pop_front();
+          records_count++;
+          if (records.length() > max_records_size) {
+            break;
+          }
+        }
+        records.append("]");
+      }
+      if (records_count) {
+        const TimestampSteady start_time = now_steady();
+        sink.write_records(records);
+        const double time_secs = timestamp_diff(start_time, now_steady());
+        if (!_quiet)
+          std::cout << gformat("Giopler: sent {} event{} to Giopler system ({:.2f} events/second)\n",
+                               records_count, (records_count > 1) ? "s" : "", records_count/time_secs);
+      }
+      {
+        is_stop_requested = stop_token.stop_requested();   // need to read this before getting records count
         const std::lock_guard<std::mutex> lock{_deque_mutex};
         records_left = _deque_records.size();
-        if (records_left) {
-          std::cout << "Sending remaining " << records_left << " events to the Giopler system..." << std::endl;
-        }
       }
-
-      do {   // loop over records waiting to be sent
-        {
-          const std::lock_guard<std::mutex> lock{_deque_mutex};
-          if (!_deque_records.empty()) {
-            sink.write_record(_deque_records.front());
-            _deque_records.pop_front();
-            records_sent++;
-          }
-          records_left = _deque_records.size();
-        }
-
-        if (stop_token.stop_requested()) {
-          if ((records_left % 100) == 0) {
-            std::cout << "Giopler events left to send: " << records_left << std::endl;
-          }
-        } else {
-          std::this_thread::yield();   // yield to app if it is still running
-        }
-      } while (records_left);
-    } while (!stop_token.stop_requested());   // hang around in case we get more work to do in future
-
-    if (records_sent) {
-      std::cout << records_sent << " total events sent to the Giopler system" << std::endl;
-    }
-  }};
+    } while (records_left || !is_stop_requested);   // hang around in case we get more work to do in future
+  };
 };
 
 // -----------------------------------------------------------------------------

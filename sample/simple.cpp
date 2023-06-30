@@ -26,7 +26,8 @@
 #include <cstdlib>
 
 // -----------------------------------------------------------------------------
-// Note: As written, this program will send 6 events to the Giopler servers.
+// Note: As written, this program will send about 6 events to the Giopler servers.
+// This number will vary depending on the build mode.
 int main()
 {
   giopler::dev::Function function;

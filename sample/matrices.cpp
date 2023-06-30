@@ -416,7 +416,8 @@ alg10(double *__restrict__ A,
 
 // -------------------------------------------------------------------
 // -------------------------------------------------------------------
-// Note: As written, this program will send 24 events to the Giopler servers.
+// Note: As written, this program will send about 24 events to the Giopler servers.
+// This number will vary depending on the build mode.
 int main() {
   pinThread();
 

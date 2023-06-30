@@ -36,7 +36,8 @@ void test(const int instance)
 }
 
 // -----------------------------------------------------------------------------
-// Note: As written, this program will send 34 events to the Giopler servers.
+// Note: As written, this program will send about 34 events to the Giopler servers.
+// This number will vary depending on the build mode.
 int main()
 {
   test(1);

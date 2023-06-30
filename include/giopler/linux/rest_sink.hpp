@@ -84,33 +84,28 @@ class Rest
 
     _json_web_token         = std::getenv("GIOPLER_TOKEN");
 
-    printf("Giopler Server: %s%s:%s\n", (_is_localhost ? "http://" : "https://"), _server_host.c_str(), _server_port.c_str());
+    //printf("Giopler Server: %s%s:%s\n", (_is_localhost ? "http://" : "https://"), _server_host.c_str(), _server_port.c_str());
 
-    if (!_is_localhost)   open_connection();
+    //if (!_is_localhost)   open_connection();
   }
 
   ~Rest() {
     close_connection();
   }
 
-  /// post the record to the server
-  // a thread gets created for each record we are trying to write
-  // there is only one Rest sink object created
-  // use a mutex to serialize the writes
-  // this maximizes the chances that the HTTP connection will stay open
-  bool write_record(std::shared_ptr<Record> record) {
-    const std::string json_body{record_to_json(record)};   // don't need the lock for this
-
+  /// post the records to the server
+  void write_records(std::string_view json_body) {
     if (_is_localhost) {
       http_post(_json_web_token, _server_host, _server_port, json_body);
     } else {
       https_post(json_body);
     }
-
-    return true;   // record was not filtered, and it was written out (vestigial)
   }
 
  private:
+  const std::regex _http_first_line_regex{"^HTTP/1\\.[01] ([[:digit:]]+) ", std::regex::optimize};
+  const std::regex _http_chunked_regex{"transfer-encoding: chunked", std::regex::optimize|std::regex::icase};
+  const std::regex _http_end_chunk_regex{"0\r\n\r\n", std::regex::optimize};
   std::string _proxy_host;
   std::string _proxy_port;
   std::string _server_host;
@@ -119,9 +114,8 @@ class Rest
   bool _is_proxy = false;
   bool _is_localhost = false;
 
-  constexpr static std::size_t RESULT_BUFFER_SIZE = 1024;
+  static constexpr std::size_t RESULT_BUFFER_SIZE = 1024;
   SSL_CTX* _ssl_ctx = nullptr;
-  const SSL_METHOD* _ssl_method = nullptr;
   BIO* _bio = nullptr;   // OpenSSL I/O stream abstraction (similar to FILE*)
   SSL* _ssl = nullptr;   // no need to free
   char _result_buffer[RESULT_BUFFER_SIZE] = "";
@@ -129,52 +123,62 @@ class Rest
   /// open a secure and persistent connection to the server
   void open_connection()
   {
-    _ssl_method = TLS_client_method();
-    assert(_ssl_method);
+    std::this_thread::yield();                   // give rest of app a chance to initialize
 
-    _ssl_ctx = SSL_CTX_new(_ssl_method);
+    const SSL_METHOD* ssl_method = TLS_client_method();
+    ERR_print_errors_fp(stderr);
+    assert(ssl_method);
+
+    _ssl_ctx = SSL_CTX_new(ssl_method);
+    ERR_print_errors_fp(stderr);
     assert(_ssl_ctx);
 
     const int verify_paths_status = SSL_CTX_set_default_verify_paths(_ssl_ctx);
+    ERR_print_errors_fp(stderr);
     assert(verify_paths_status == 1);
 
     SSL_CTX_set_verify_depth(_ssl_ctx, 5);
+    ERR_print_errors_fp(stderr);
 
     const int min_proto_status = SSL_CTX_set_min_proto_version(_ssl_ctx, TLS1_VERSION);
+    ERR_print_errors_fp(stderr);
     assert(min_proto_status);
 
     SSL_CTX_set_mode(_ssl_ctx, SSL_MODE_AUTO_RETRY);   // do not bother app with requests to retry
+    ERR_print_errors_fp(stderr);
 
     _bio = BIO_new_ssl_connect(_ssl_ctx);
+    ERR_print_errors_fp(stderr);
     assert(_bio);
 
     //BIO_set_callback_ex(_bio, BIO_debug_callback_ex);   // ********************************
 
     const long bio_get_ssl_status = BIO_get_ssl(_bio, &_ssl);
-    ERR_print_errors(_bio);
+    ERR_print_errors_fp(stderr);
     assert(bio_get_ssl_status);
 
     SSL_clear_options(_ssl, SSL_OP_NO_COMPRESSION);   // enabled by default
 
     const int tlsext_host_status = SSL_set_tlsext_host_name(_ssl, _server_host.c_str());
+    ERR_print_errors_fp(stderr);
     assert(tlsext_host_status);
 
     SSL_set_mode(_ssl, SSL_MODE_AUTO_RETRY);   // do not bother app with requests to retry
 
     const long set_conn_hostname_status = BIO_set_conn_hostname(_bio, _server_host.c_str());
-    ERR_print_errors(_bio);
+    ERR_print_errors_fp(stderr);
     assert(set_conn_hostname_status == 1);
 
     const long set_conn_port_status = BIO_set_conn_port(_bio, _server_port.c_str());
-    ERR_print_errors(_bio);
+    ERR_print_errors_fp(stderr);
     assert(set_conn_port_status == 1);
 
-    const int bio_conn_status = BIO_do_connect(_bio);
-    ERR_print_errors(_bio);
+    int bio_conn_status = BIO_do_connect(_bio);
+    ERR_print_errors_fp(stderr);
     assert(bio_conn_status == 1);
 
     const long handshake_status = BIO_do_handshake(_bio);
-    ERR_print_errors(_bio);
+    ERR_print_errors_fp(stderr);
     assert(handshake_status == 1);
 
     X509* cert = SSL_get_peer_certificate(_ssl);
@@ -182,16 +186,30 @@ class Rest
     if (cert)   X509_free(cert);    // free immediately
 
     const long verify_status = SSL_get_verify_result(_ssl);
+    ERR_print_errors_fp(stderr);
     assert(verify_status == X509_V_OK);
-
-    ERR_print_errors(_bio);
   }
 
-  void check_reopen_connection() {
+  /// close and clean-up data for a previously open connection
+  void close_connection() {
+    if (_bio) {
+      BIO_free_all(_bio);
+      _bio = nullptr;
+    }
+
+    if (_ssl_ctx) {
+      SSL_CTX_free(_ssl_ctx);
+      _ssl_ctx = nullptr;
+    }
+  }
+
+  bool check_reopen_connection() {
     if (SSL_get_shutdown(_ssl)) {   // SSL_SENT_SHUTDOWN or SSL_RECEIVED_SHUTDOWN
         close_connection();
         open_connection();
+        return true;
     }
+    return false;
   }
 
   /// perform a HTTP POST of a JSON payload
@@ -202,22 +220,28 @@ class Rest
   // https://wiki.openssl.org/index.php/Library_Initialization
   // https://wiki.openssl.org/index.php/SSL/TLS_Client
   void https_post(std::string_view json_content) {
-    check_reopen_connection();
+    //check_reopen_connection();
+    open_connection();
+
     send_request(json_content);
+    std::this_thread::yield();
 
-    read_response();
-    const int response_status = parse_response_status();
-    assert(response_status == 201);
+    //if (!check_reopen_connection()) {
+      read_response();
+      const int response_status = parse_response_status();
+      assert(response_status == 201);
 
-    if (is_chunked_response()) {
-      read_response();          // discard zero length end chunk
-    }
+      if (is_chunked_response()) {
+        read_response();          // discard zero length end chunk
+      }
+    //}
+    close_connection();
   }
 
   void send_request(std::string_view json_content) {
     char headers[1024];
     const std::vector<std::uint8_t> compressed_body = compress_gzip(json_content);
-    int total, sent, bytes;
+    std::size_t total, sent, bytes;
 
     sprintf(headers,
         "POST /api/v1/post_event HTTP/1.1\r\n"
@@ -233,32 +257,31 @@ class Rest
         _server_host.c_str(), _server_port.c_str(), _json_web_token.c_str(), compressed_body.size());
 
     // send the headers
-    total = (int)strlen(headers);
+    total = strlen(headers);
     sent = 0;
     do {
-        bytes = BIO_write(_bio,headers+sent,total-sent);
-        ERR_print_errors(_bio);
-        if (bytes == -2)
+        const int write_status = BIO_write_ex(_bio,headers+sent,total-sent, &bytes);
+        ERR_print_errors_fp(stderr);
+        if (write_status < 0)
             http_error("ERROR writing headers via OpenSSL", _bio);
-        if (bytes == 0)
-            break;
-        if (bytes > 0)
+        else   // if (bytes >= 0)
             sent += bytes;
-    } while (sent < total || BIO_should_retry(_bio));
+    } while (sent < total);
 
     // send the body
-    total = (int)compressed_body.size();
+    total = compressed_body.size();
     sent = 0;
     do {
-        bytes = BIO_write(_bio,compressed_body.data()+sent,total-sent);
-        ERR_print_errors(_bio);
-        if (bytes == -2)
+        const int write_status = BIO_write_ex(_bio,compressed_body.data()+sent,total-sent, &bytes);
+        ERR_print_errors_fp(stderr);
+        if (write_status < 0)
             http_error("ERROR writing body via OpenSSL", _bio);
-        if (bytes == 0)
-            break;
-        if (bytes > 0)
+        else    // if (bytes >= 0)
             sent += bytes;
-    } while (sent < total || BIO_should_retry(_bio));
+    } while (sent < total);
+
+    const int flush_status = BIO_flush(_bio);
+    assert(flush_status == 1);
   }
 
   // we use HTTP 1.1 streaming for better performance
@@ -266,61 +289,37 @@ class Rest
   // there is nothing in the response we really need to look at
   // so we punt and just read some bytes and then discard them
   void read_response() {
-      std::size_t bytes_total = 0;
-      std::size_t bytes_read;
-      int read_status;
-      do {
-          bytes_read = 0;
-          /* read_status = */ BIO_read_ex(_bio, &(_result_buffer[bytes_total]), RESULT_BUFFER_SIZE-bytes_total, &bytes_read);
-          ERR_print_errors(_bio);
-          bytes_total += bytes_read;
-
-      } while (bytes_total == 0 || BIO_should_retry(_bio));
-
-      _result_buffer[bytes_total] = '\0';
+      std::size_t bytes_read = 0;
+      const int read_status = BIO_read_ex(_bio, _result_buffer, RESULT_BUFFER_SIZE, &bytes_read);
+      ERR_print_errors_fp(stderr);
+      assert(read_status > 0);
+      _result_buffer[bytes_read] = '\0';
   }
 
   // HTTP method names are case-sensitive
   // HTTP header names are case-insensitive
   int parse_response_status() {
-      static std::regex http_first_line_regex{"^HTTP/1\\.[01] ([[:digit:]]+) ", std::regex::optimize};
-
       std::cmatch match;
-      std::regex_search(_result_buffer, match, http_first_line_regex);
+      std::regex_search(_result_buffer, match, _http_first_line_regex);
       assert(match.ready());
-      return (match.size() == 2) ? std::stoi(match[1]) : 0;
+      const int response_status = (match.size() == 2) ? std::stoi(match[1]) : 0;
+      return response_status;
   }
 
   // https://en.wikipedia.org/wiki/Chunked_transfer_encoding
   bool is_chunked_response() {
-      static std::regex http_chunked_regex{"transfer-encoding: chunked", std::regex::optimize|std::regex::icase};
-      static std::regex http_end_chunk_regex{"0\r\n\r\n", std::regex::optimize};
-
       std::cmatch match_chunked;
-      std::regex_search(_result_buffer, match_chunked, http_chunked_regex);
+      std::regex_search(_result_buffer, match_chunked, _http_chunked_regex);
       assert(match_chunked.ready());
 
       if (!match_chunked.empty()) {
         std::cmatch match_end_chunk;
-        std::regex_search(_result_buffer, match_end_chunk, http_end_chunk_regex);
+        std::regex_search(_result_buffer, match_end_chunk, _http_end_chunk_regex);
         assert(match_end_chunk.ready());
         return match_end_chunk.empty();   // chunked data, but have not seen the end chunk
       }
 
       return false;   // not chunked
-  }
-
-  /// close and clean-up data for a previously open connection
-  void close_connection() {
-    if (_bio) {
-      BIO_free_all(_bio);
-      _bio = nullptr;
-    }
-
-    if (_ssl_ctx) {
-      SSL_CTX_free(_ssl_ctx);
-      _ssl_ctx = nullptr;
-    }
   }
 
   // -----------------------------------------------------------------------------
@@ -367,8 +366,9 @@ class Rest
 
   // -----------------------------------------------------------------------------
   static void http_error(const char *msg, BIO* bio = nullptr) {
-    if (bio)   ERR_print_errors(bio);
-    perror(msg); exit(0);
+    ERR_print_errors_fp(stderr);
+    perror(msg);
+    exit(0);
   }
 
   // ---------------------------------------------------------------------------

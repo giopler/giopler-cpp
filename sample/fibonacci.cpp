@@ -34,7 +34,8 @@ int fibonacci(int n)
 }
 
 // -----------------------------------------------------------------------------
-// Note: As written, this program will send 362 events to the Giopler servers.
+// Note: As written, this program will send about 362 events to the Giopler servers.
+// This number will vary depending on the build mode.
 int main()
 {
   giopler::dev::confirm(fibonacci( 1) ==    1);

@@ -264,7 +264,8 @@ void stl_sort(RandomIt first, RandomIt last) {
 }
 
 // -----------------------------------------------------------------------------
-// Note: As written, this program will send 8 events to the Giopler servers.
+// Note: As written, this program will send about 8 events to the Giopler servers.
+// This number will vary depending on the build mode.
 int main()
 {
   constexpr size_t elements = 1024;
