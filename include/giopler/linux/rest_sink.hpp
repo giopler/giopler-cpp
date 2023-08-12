@@ -84,9 +84,7 @@ class Rest
 
     _json_web_token         = std::getenv("GIOPLER_TOKEN");
 
-    //printf("Giopler Server: %s%s:%s\n", (_is_localhost ? "http://" : "https://"), _server_host.c_str(), _server_port.c_str());
-
-    //if (!_is_localhost)   open_connection();
+    if (!_is_localhost)   open_connection();
   }
 
   ~Rest() {
@@ -203,6 +201,7 @@ class Rest
     }
   }
 
+  // returns true=connection was reopened
   bool check_reopen_connection() {
     if (SSL_get_shutdown(_ssl)) {   // SSL_SENT_SHUTDOWN or SSL_RECEIVED_SHUTDOWN
         close_connection();
@@ -220,13 +219,12 @@ class Rest
   // https://wiki.openssl.org/index.php/Library_Initialization
   // https://wiki.openssl.org/index.php/SSL/TLS_Client
   void https_post(std::string_view json_content) {
-    //check_reopen_connection();
-    open_connection();
+    check_reopen_connection();
 
     send_request(json_content);
     std::this_thread::yield();
 
-    //if (!check_reopen_connection()) {
+    if (!check_reopen_connection()) {
       read_response();
       const int response_status = parse_response_status();
       assert(response_status == 201);
@@ -234,8 +232,7 @@ class Rest
       if (is_chunked_response()) {
         read_response();          // discard zero length end chunk
       }
-    //}
-    close_connection();
+    }
   }
 
   void send_request(std::string_view json_content) {

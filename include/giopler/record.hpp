@@ -639,7 +639,11 @@ std::shared_ptr<Record> get_event_record(const source_location& source_location,
       {"thrd_id"s,            get_thread_id()},
       {"node_id"s,            get_node_id()},
       {"cpu_id"s,             get_cpu_id()},
+
       {"avail_mem"s,          get_available_memory()},
+      {"load_avg1"s,          get_load_average1()},
+      {"load_avg5"s,          get_load_average5()},
+      {"load_avg15"s,         get_load_average15()},
 
       {"clss"s,               giopler::prod::Class::get_class()},
       {"id"s,                 giopler::prod::Id::get_id()},

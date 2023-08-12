@@ -90,8 +90,7 @@ uint64_t get_conf_cpu_cores()
 #endif   // defined GIOPLER_PLATFORM_LINUX
 
 // -----------------------------------------------------------------------------
-/// total number of CPU cores configured in the system
-// the actual number of available CPU cores could be less
+/// total number of CPU cores available in the system
 // we use the value reported by the system
 // https://www.gnu.org/software/libc/manual/html_node/Sysconf.html
 // could also use sysconf(_SC_NPROCESSORS_ONLN)
@@ -359,6 +358,49 @@ uint64_t get_available_memory()
 #else
 namespace giopler {
 uint64_t get_available_memory()
+{
+  return 0;
+}
+}   // namespace giopler
+#endif   // defined GIOPLER_PLATFORM_LINUX
+
+// -----------------------------------------------------------------------------
+/// system CPU load average
+// we use the values reported by the system
+// https://man7.org/linux/man-pages/man3/getloadavg.3.html
+#if defined(GIOPLER_PLATFORM_LINUX)      // Linux kernel; could be GNU or Android
+#include <cstdlib>
+namespace giopler {
+double get_load_average1()
+{
+  double loads[3];
+  const int status = getloadavg(loads, 3);
+  return (status == -1) ? 0 : loads[0];
+}
+double get_load_average5()
+{
+  double loads[3];
+  const int status = getloadavg(loads, 3);
+  return (status == -1) ? 0 : loads[1];
+}
+double get_load_average15()
+{
+  double loads[3];
+  const int status = getloadavg(loads, 3);
+  return (status == -1) ? 0 : loads[2];
+}
+}   // namespace giopler
+#else
+namespace giopler {
+double get_load_average1()
+{
+  return 0;
+}
+double get_load_average5()
+{
+  return 0;
+}
+double get_load_average15()
 {
   return 0;
 }

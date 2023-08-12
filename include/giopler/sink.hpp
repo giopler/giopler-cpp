@@ -81,9 +81,6 @@ class SinkManager final {
     for (int process = 0; process < _process_count; ++process) {
       _processes.emplace_back(_process_function);
     }
-
-    if (!_quiet)
-      std::cout << gformat("Giopler: launched {} threads to process events\n", _process_count);
   }
 
   /// Waits for all sinks to finish processing data before exiting.
@@ -137,10 +134,14 @@ class SinkManager final {
   }
 
  private:
-  // Warning: Increasing _process_count leads to higher lock contention at the servers.
-  //          This leads to lower throughput, not higher.
+  // Warning: Please resist the temptation to adjust these values.
+  // Increasing _process_count leads to higher lock contention at the servers.
+  // This leads to lower overall throughput, not higher.
+  // Keeping max_records_size small is better for user feedback.
+  // Increasing it will not result in significantly higher throughput.
   static constexpr int _process_count = 4;                                // processes to send events to the server
-  static constexpr std::size_t max_records_size = 10*1024*1024;           // JSON bytes before gzip compression
+  static constexpr std::size_t max_records_size = 4*1024*1024;            // JSON bytes before gzip compression
+
   static inline std::deque<std::shared_ptr<Record>> _deque_records;
   static inline std::mutex _deque_mutex;
   static inline std::mutex _cond_var_mutex;
