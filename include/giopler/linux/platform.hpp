@@ -365,7 +365,7 @@ uint64_t get_available_memory()
 #endif   // defined GIOPLER_PLATFORM_LINUX
 
 // -----------------------------------------------------------------------------
-/// system CPU load average
+/// system CPU load average / available CPU cores
 // we use the values reported by the system
 // https://man7.org/linux/man-pages/man3/getloadavg.3.html
 #if defined(GIOPLER_PLATFORM_LINUX)      // Linux kernel; could be GNU or Android
@@ -375,19 +375,19 @@ double get_load_average1()
 {
   double loads[3];
   const int status = getloadavg(loads, 3);
-  return (status == -1) ? 0 : loads[0];
+  return (status == -1) ? 0 : (loads[0] / get_available_cpu_cores());
 }
 double get_load_average5()
 {
   double loads[3];
   const int status = getloadavg(loads, 3);
-  return (status == -1) ? 0 : loads[1];
+  return (status == -1) ? 0 : (loads[1] / get_available_cpu_cores());
 }
 double get_load_average15()
 {
   double loads[3];
   const int status = getloadavg(loads, 3);
-  return (status == -1) ? 0 : loads[2];
+  return (status == -1) ? 0 : (loads[2] / get_available_cpu_cores());
 }
 }   // namespace giopler
 #else
