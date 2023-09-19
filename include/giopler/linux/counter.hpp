@@ -323,8 +323,8 @@ class LinuxEvents final {
                                                   PERF_TYPE_SOFTWARE, PERF_COUNT_SW_EMULATION_FAULTS);
 
     _fd_hw_cpu_cycles_instr_group =
-        std::make_unique<LinuxEvent>("PERF_COUNT_HW_CPU_CYCLES",
-                                     PERF_TYPE_HARDWARE, PERF_COUNT_HW_CPU_CYCLES,
+        std::make_unique<LinuxEvent>("PERF_COUNT_HW_REF_CPU_CYCLES",
+                                     PERF_TYPE_HARDWARE, PERF_COUNT_HW_REF_CPU_CYCLES,
                                      "PERF_COUNT_HW_INSTRUCTIONS",
                                      PERF_TYPE_HARDWARE, PERF_COUNT_HW_INSTRUCTIONS);
 
