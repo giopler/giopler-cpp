@@ -641,6 +641,8 @@ std::shared_ptr<Record> get_event_record(const source_location& source_location,
       {"cpu_id"s,             get_cpu_id()},
 
       {"avail_mem"s,          get_available_memory()},
+      {"cur_freq"s,           get_cur_freq()},        // frequency of current CPU core in kHz
+      {"max_freq"s,           get_max_freq()},        // could be different for different CPU cores
       {"load_avg1"s,          get_load_average1()},
       {"load_avg5"s,          get_load_average5()},
       {"load_avg15"s,         get_load_average15()},

@@ -285,7 +285,7 @@ uint64_t get_thread_id()
 
 // -----------------------------------------------------------------------------
 /// NUMA node id
-// this is the CPU core id where the calling thread is currently running
+// this is the NUMA node id where the calling thread is currently running
 #if defined(GIOPLER_PLATFORM_LINUX)      // Linux kernel; could be GNU or Android
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE 1
@@ -358,6 +358,67 @@ uint64_t get_available_memory()
 #else
 namespace giopler {
 uint64_t get_available_memory()
+{
+  return 0;
+}
+}   // namespace giopler
+#endif   // defined GIOPLER_PLATFORM_LINUX
+
+// -----------------------------------------------------------------------------
+/// current frequency in kHz for the current CPU core
+// we use the value reported by the system
+// https://www.kernel.org/doc/html/v6.5/admin-guide/pm/cpufreq.html
+#if defined(GIOPLER_PLATFORM_LINUX)      // Linux kernel; could be GNU or Android
+#include <fstream>
+#include <string>
+namespace giopler {
+uint64_t get_cur_freq()
+{
+  const uint64_t cpu_id = get_cpu_id();
+  std::ifstream freq_file("/sys/devices/system/cpu/cpu" + std::to_string(cpu_id) + "/cpufreq/scaling_cur_freq");
+  if (!freq_file.is_open()) {
+    return 0;
+  }
+
+  std::string freq_str;
+  freq_file >> freq_str;
+  return std::stoul(freq_str);
+}
+}   // namespace giopler
+#else
+namespace giopler {
+uint64_t get_cur_freq()
+{
+  return 0;
+}
+}   // namespace giopler
+#endif   // defined GIOPLER_PLATFORM_LINUX
+
+// -----------------------------------------------------------------------------
+/// maximum frequency in kHz for the current CPU core
+// we use the value reported by the system
+// https://www.kernel.org/doc/html/v6.5/admin-guide/pm/cpufreq.html
+// Perf and Eff cores in modern CPUs have different max frequencies
+#if defined(GIOPLER_PLATFORM_LINUX)      // Linux kernel; could be GNU or Android
+#include <fstream>
+#include <string>
+namespace giopler {
+uint64_t get_max_freq()
+{
+  const uint64_t cpu_id = get_cpu_id();
+  std::ifstream freq_file("/sys/devices/system/cpu/cpu" + std::to_string(cpu_id) + "/cpufreq/scaling_max_freq");
+  if (!freq_file.is_open()) {
+    return 0;
+  }
+
+  std::string freq_str;
+  freq_file >> freq_str;
+  return std::stoul(freq_str);
+}
+}   // namespace giopler
+#else
+namespace giopler {
+uint64_t get_max_freq()
 {
   return 0;
 }
